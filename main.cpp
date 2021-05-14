@@ -79,14 +79,15 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
    const int n = dens.get_dim();
    
    // the smallest grid size, do the exact solver
-   if ( n <= 5 )
+   if ( n <= 3 )
    {
       // Exact solver
+      matrix eps( phi.get_dim(), phi.get_h() );
       matrix dens2 = dens.Restriction();
       eps.SOR_smoothing( dens2, SOR_omega, exact_step );
    }
    // stop recursion at smallest grid size
-   else if ( n <= 11 ) // if ( n <= 5 )
+   else if ( n <= 7 ) // if ( n <= 3 )
    {
       // Pre-Smoothing
       phi.SOR_smoothing( dens, SOR_omega, smooth_step );
@@ -94,9 +95,9 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
       // Restriction
       matrix r = phi.Residual( dens );
       matrix rhs = r.Restriction();
-      matrix eps( rhs.get_dim(), rhs.get_h() );
       
       // Exact solver
+      matrix eps( rhs.get_dim(), rhs.get_h() );
       matrix dens2 = dens.Restriction();
       eps.SOR_smoothing( dens2, SOR_omega, exact_step );
       
@@ -110,7 +111,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
          phi.SOR_smoothing( dens, SOR_omega, smooth_step );
       }
    }
-   else // if ( n <= 5 ) ... else if ( n <= 11 ) ...
+   else // if ( n <= 3 ) ... else if ( n <= 7 ) ...
    {
       // Pre-Smoothing
       phi.SOR_smoothing( dens, SOR_omega, smooth_step );
@@ -120,7 +121,10 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
       matrix rhs = r.Restriction();
       matrix eps( rhs.get_dim(), rhs.get_h() );
       
+      // Left valley
       eps = W_Cycle( eps, rhs, 0 );
+
+      // Right valley
       eps = W_Cycle( eps, rhs, 1 );
       
       // Prolongation
@@ -132,7 +136,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
          // Post-Smoothing
          phi.SOR_smoothing( dens, SOR_omega, smooth_step );
       }
-   } // if ( n <= 5 ) ... else if ( n <= 11 ) ... else ...
+   } // if ( n <= 3 ) ... else if ( n <= 7 ) ... else ...
    
    return phi;
    
