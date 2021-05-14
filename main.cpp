@@ -61,9 +61,81 @@ matrix V_Cycle(matrix phi, matrix dens)
 } // FUNCTION : V_Cycle
 
 
-matrix W_Cycle( matrix phi, matrix dens )
+//--------------------------------------------------------------------------------
+// Function    : W_Cycle
+// Description : 
+// Note        :
+// Input       : phi  :
+//               dens :
+//               LR   : 0 : the left valley of the W cycle
+//                      1 : the right valley of the W cycle
+// Output      :
+//--------------------------------------------------------------------------------
+matrix W_Cycle( matrix phi, matrix dens, const int LR )
 {
-
+   const int smooth_step  = 3;
+   const int exact_step   = 100;
+   const double SOR_omega = 1.7;
+   const int n = dens.get_dim();
+   
+   // the smallest grid size, do the exact solver
+   if ( n <= 5 )
+   {
+      // Exact solver
+      matrix dens2 = dens.Restriction();
+      eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+   }
+   // stop recursion at smallest grid size
+   else if ( n <= 11 ) // if ( n <= 5 )
+   {
+      // Pre-Smoothing
+      phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+      
+      // Restriction
+      matrix r = phi.Residual( dens );
+      matrix rhs = r.Restriction();
+      matrix eps( rhs.get_dim(), rhs.get_h() );
+      
+      // Exact solver
+      matrix dens2 = dens.Restriction();
+      eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+      
+      // Prolongation
+      phi = phi + eps.Interpolation( phi.get_dim() );
+      
+      // Don't do the Post-smoothing for the right valley
+      if ( LR == 1 )
+      {
+         // Post-Smoothing
+         phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+      }
+   }
+   else // if ( n <= 5 ) ... else if ( n <= 11 ) ...
+   {
+      // Pre-Smoothing
+      phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+      
+      // Restriction
+      matrix r = phi.Residual( dens );
+      matrix rhs = r.Restriction();
+      matrix eps( rhs.get_dim(), rhs.get_h() );
+      
+      eps = W_Cycle( eps, rhs, 0 );
+      eps = W_Cycle( eps, rhs, 1 );
+      
+      // Prolongation
+      phi = phi + eps.Interpolation( phi.get_dim() );
+      
+      // Don't do the Post-smoothing for the right valley
+      if ( LR == 1 )
+      {
+         // Post-Smoothing
+         phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+      }
+   } // if ( n <= 5 ) ... else if ( n <= 11 ) ... else ...
+   
+   return phi;
+   
 } // FUNCTION : W_Cycle
 
 
@@ -81,5 +153,8 @@ int main()
   
   matrix solution = V_Cycle(pot,dens);
   
+  matrix solution2 = V_Cycle(pot,dens);
+  
   solution.Error(ans);
+  solution2.Error(ans);
 } // FUNCTION : main 
