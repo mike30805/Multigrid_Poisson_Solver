@@ -2,32 +2,33 @@
 #define PI 3.14159265359
 
 
-double f( double x,double y )
+double f( const double x, const double y )
 {
-    return sin(x)*sin(y);
-} // double f(double x,double y)
+    return sin(x) * sin(y);
+} // FUNCTION : f
 
 
 
 void solved( matrix &m )
 {
-    int dim = m.get_dim();
-    for(int i=0; i<dim; i++)
+    const int dim = m.get_dim();
+    const int dim_2 = dim*dim;
+    for ( int idx = 0; idx < dim_2; idx++ )
     {
-        for(int j=0; j<dim; j++)
-        {
-            double h = m.get_h();
-            double x = h*i;
-            double y = h*j;
+        const int i = idx / dim;
+        const int j = idx % dim;
+        
+        const double h = m.get_h();
+        const double x = h*i;
+        const double y = h*j;
       
-            m.input_answer(i,j,f(x,y));
-        } // for(int j=0; j<dim; j++)
-    } // for(int i=0; i<dim; i++)
+        m.input_answer( i, j, f(x, y) );
+    } // for ( int idx = 0; idx < dim_2; idx++ )
 } // FUNCTION : solved
 
 
 
-matrix V_Cycle(matrix phi, matrix dens)
+matrix V_Cycle( matrix phi, matrix dens )
 {
     // Pre-Smoothing
     phi.SOR_smoothing( dens, 1.7, 3 );
@@ -104,7 +105,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           // Prolongation
           phi = phi + eps.Interpolation( phi.get_dim() );
           
-          // Don't do the Post-smoothing for the right valley
+          // Don't do the Post-smoothing for the left valley
           if ( LR == 1 )
           {
                // Post-Smoothing
@@ -130,7 +131,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           // Prolongation
           phi = phi + eps.Interpolation( phi.get_dim() );
           
-          // Don't do the Post-smoothing for the right valley
+          // Don't do the Post-smoothing for the left valley
           if ( LR == 1 )
           {
                // Post-Smoothing
