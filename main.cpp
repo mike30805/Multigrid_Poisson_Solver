@@ -13,6 +13,7 @@ void solved( matrix &m )
 {
     const int dim = m.get_dim();
     const int dim_2 = dim*dim;
+    
     for ( int idx = 0; idx < dim_2; idx++ )
     {
         const int i = idx / dim;
@@ -24,6 +25,7 @@ void solved( matrix &m )
       
         m.input_answer( i, j, f(x, y) );
     } // for ( int idx = 0; idx < dim_2; idx++ )
+
 } // FUNCTION : solved
 
 
@@ -59,6 +61,7 @@ matrix V_Cycle( matrix phi, matrix dens )
     phi.SOR_smoothing( dens, 1.7, 3 );
     
     return phi;
+
 } // FUNCTION : V_Cycle
 
 
@@ -118,7 +121,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           phi.SOR_smoothing( dens, SOR_omega, smooth_step );
           
           // Restriction
-          matrix r = phi.Residual( dens );
+          matrix r   = phi.Residual( dens );
           matrix rhs = r.Restriction();
           matrix eps( rhs.get_dim(), rhs.get_h() );
           
@@ -148,18 +151,18 @@ int main()
 {
     int N = 8000;
     double h = PI/(N-1);
-    matrix pot(N,h);
+    matrix pot( N, h );
   
-    matrix dens(N,h);
+    matrix dens( N, h );
     dens.init_sin_dens();
     
-    matrix ans(N,h);
+    matrix ans( N, h );
     solved(ans);
     
-    matrix solution = V_Cycle(pot,dens);
+    matrix solution = V_Cycle( pot, dens );
     
-    matrix solution2 = V_Cycle(pot,dens);
+    matrix solution2 = W_Cycle( pot, dens, 1 );
     
-    solution.Error(ans);
-    solution2.Error(ans);
+    solution.Error( ans );
+    solution2.Error( ans );
 } // FUNCTION : main 

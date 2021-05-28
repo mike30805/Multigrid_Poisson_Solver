@@ -36,6 +36,7 @@ class matrix
         void   input_answer(int i,int j,double ans);
 
         matrix operator+(const matrix&);
+
 }; // CLASS : matrix
 
 
