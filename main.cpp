@@ -29,36 +29,52 @@ void solved( matrix &m )
 } // FUNCTION : solved
 
 
-
+//--------------------------------------------------------------------------------
+// Function    : V_Cycle
+// Description : 
+// Note        :
+// Input       : phi  : Potential of the test problem
+//               dens : Density
+// Output      : Solved potential 2D array
+//--------------------------------------------------------------------------------
 matrix V_Cycle( matrix phi, matrix dens )
 {   
-    // Pre-Smoothing
-    phi.SOR_smoothing( dens, 1.7, 3 );
-    
-    // Compute Residual Errors
-    matrix r = phi.Residual( dens );
-  
-    // Restriction
-    matrix rhs = r.Restriction();
-    
-    matrix eps( rhs.get_dim(), rhs.get_h() );
-    
-    // stop recursion at smallest grid size, otherwise continue recursion
-    if ( rhs.get_dim() <= 5 )
+    const int smooth_step  = 3;
+    const int exact_step   = 100;
+    const double SOR_omega = 1.7;
+    const int n = dens.get_dim();
+
+    // the smallest grid size, do the exact solver
+    if ( n <= 3 )
     {
-        matrix dens2 = dens.Restriction();
-        eps.SOR_smoothing( dens2, 1.7, 100 );
-    } // if ( rhs.get_dim() <= 5 )
-    else
-    {
+          // Exact solver
+          matrix eps( phi.get_dim(), phi.get_h() );
+          matrix dens2 = dens.Restriction();
+          eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+    }
+
+    else{
+        // Pre-Smoothing
+        phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+        
+        // Compute Residual Errors
+        matrix r = phi.Residual( dens );
+    
+        // Restriction
+        matrix rhs = r.Restriction();
+        
+        matrix eps( rhs.get_dim(), rhs.get_h() );
+        
+        // Go to smaller grid size
         eps = V_Cycle( eps, rhs );  
-    } // if ( rhs.get_dim() <= 5 ) ... else ...
-  
-    // Prolongation and Correction
-    phi = phi + eps.Interpolation( phi.get_dim() );
-  	
-    // Post-Smoothing
-    phi.SOR_smoothing( dens, 1.7, 3 );
+    
+        // Prolongation and Correction
+        phi = phi + eps.Interpolation( phi.get_dim() );
+        
+        // Post-Smoothing
+    }
+    
+    phi.SOR_smoothing( dens, SOR_omega, smooth_step );
     
     return phi;
 
