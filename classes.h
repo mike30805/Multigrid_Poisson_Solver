@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
+#include<omp.h>
+#include<chrono>
 #include "vector"
 
 using namespace std;
@@ -28,6 +30,7 @@ class matrix
         double insertion(int i,int j,int dim_in);
         matrix Interpolation(int);
         matrix Residual(const matrix& rho);
+        matrix Laplacian();
   
         void init_density();
         void init_potential();
@@ -37,6 +40,7 @@ class matrix
         void   input_answer(int i,int j,double ans);
 
         matrix operator+(const matrix&);
+        matrix operator-(const matrix&);
 
 }; // CLASS : matrix
 

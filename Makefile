@@ -3,9 +3,9 @@ exe:=main
 obj:=main.o matrix.o
 
 all:$(obj)
-	$(CC) -o $(exe) $(obj)
+	$(CC) -fopenmp -o $(exe) $(obj)
 %.o:%.cpp 
-	$(CC) -c $^ -o $@ 
+	$(CC) -fopenmp -c $^ -o $@ 
 
 .PHONY:clean
 clean:

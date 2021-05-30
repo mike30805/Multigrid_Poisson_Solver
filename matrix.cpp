@@ -51,12 +51,13 @@ void matrix::Error( const matrix &b )
     {
         for( int j = 0; j < dim; j++ )
         {
-            sum += absolute(this->value[i][j]-b.value[i][j])/ b.value[i][j];
+            sum += absolute(this->value[i][j]-b.value[i][j]);
+            ave += absolute(b.value[i][j]);
         }
         
     } // for( int i = 0; i < dim; i++ )
 
-    cout << sum/dim/dim << endl;
+    cout << sum/ave << endl;
 
 } //FUNCTION : matrix::Error
 
@@ -64,22 +65,37 @@ void matrix::Error( const matrix &b )
 
 void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
 {
-    for( int t = 0; t < steps; t++ )
-    {
-        for( int i = 0; i < dim; i++ )
-        {
-            for( int j = 0; j < dim; j++ )
+     for (int t = 0; t < steps; t++) {
+#  pragma omp parallel num_threads(2) 
             {
-                if( i != 0 && i != dim-1 && j != 0 && j != dim-1 )
-                {
-                  this->value[i][j] += omega * 0.25 * ( this->value[i+1][j] + this->value[i-1][j] + 
-                                                        this->value[i][j+1] + this->value[i][j-1] - 
-                                                        this->value[i][j]*4 - h*h*rho.value[i][j]   );
-                }
+                const int tid = omp_get_thread_num();
+                
+#     pragma omp for collapse(2)
+                    for (int i = 0; i < dim; i++) {
+                        for (int j = 0; j < dim; j++) {
+                            if ((i + j) % 2 == 0) {
+                                if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1) {
+                                    this->value[i][j] += omega * 0.25 * (this->value[i + 1][j] + this->value[i - 1][j] + this->value[i][j + 1] + this->value[i][j - 1] - this->value[i][j] * 4 - h * h * rho.value[i][j]);
+                                } //if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1)
+                            } //if ((i + j) % 2 == 0)
+                        } //for (int j = 0; j < dim; j++)
+                    } //for (int i = 0; i < dim; i++) 
+                
+#     pragma omp barrier
+#     pragma omp for collapse(2)
+                    for (int i = 0; i < dim; i++) {
+                        for (int j = 0; j < dim; j++) {
+                            if ((i + j) % 2 == 1) {
+                                if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1) {
+                                    this->value[i][j] += omega * 0.25 * (this->value[i + 1][j] + this->value[i - 1][j] + this->value[i][j + 1] + this->value[i][j - 1] - this->value[i][j] * 4 - h * h * rho.value[i][j]);
+                                } //if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1)
+                            } //if ((i + j) % 2 == 1)
+                        } //for (int j = 0; j < dim; j++)
+                    } //for (int i = 0; i < dim; i++) 
+                
 
-            } // for( int j = 0; j < dim; j++ )
-        } // for( int i = 0; i < dim; i++ )
-     } // for( int t = 0; t < steps; t++ )
+            } //#    pragma omp parallel
+        } //for (int t = 0; t < steps; t++)
 
 } // FUNCTION : matrix::SOR_smoothing
 
@@ -218,6 +234,26 @@ matrix matrix::Residual( const matrix & rho )
 
 } // FUNCTION : matrix::Residual
 
+matrix matrix::Laplacian()
+{
+    matrix lap( this->dim, this->h );
+    for( int i = 0; i < dim; i++ )
+    {
+        for( int j = 0; j < dim; j++ )
+        {
+            if ( i != 0 && i != dim-1 && j != 0 && j != dim-1 )
+            {
+                lap.value[i][j] = 0.25 * ( this->value[i+1][j  ]   + this->value[i-1][j  ] + 
+                                           this->value[i  ][j+1]   + this->value[i  ][j-1] - 
+                                           this->value[i  ][j  ]*4  ) / h / h;
+            }
+        } // for( int j = 0; j < dim; j++ )
+    } // for( int i = 0; i < dim; i++ )
+
+    return lap;
+
+} // FUNCTION : matrix::Laplacian
+
 
 void matrix::init_density()
 {
@@ -282,6 +318,22 @@ matrix matrix::operator+( const matrix &b )
     return tmp;
 
 } // FUNCTION : matrix::operator+
+
+matrix matrix::operator-( const matrix &b )
+{
+    matrix tmp( dim, h );
+
+    for( int i = 0; i < dim; i++ )
+    {
+        for( int j = 0; j < dim; j++ )
+        {
+            tmp.value[i][j] = this->value[i][j] - b.value[i][j];
+        }
+    }
+
+    return tmp;
+
+} // FUNCTION : matrix::operator-
 
 
 
