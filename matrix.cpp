@@ -23,6 +23,10 @@ matrix::~matrix()
 } // DESTRUCTURE : matrix::~matrix()
 
 
+double absolute(double x){
+    if(x>=0) return x;
+    return -x;
+} // FUNCTION : absolute()
 
 void matrix::display()
 {
@@ -47,13 +51,12 @@ void matrix::Error( const matrix &b )
     {
         for( int j = 0; j < dim; j++ )
         {
-            sum += abs( this->value[i][j] - b.value[i][j] );
-            ave += b.value[i][j];
+            sum += absolute(this->value[i][j]-b.value[i][j])/ b.value[i][j];
         }
         
     } // for( int i = 0; i < dim; i++ )
 
-    cout << sum/ave/dim/dim << endl;
+    cout << sum/dim/dim << endl;
 
 } //FUNCTION : matrix::Error
 
@@ -216,22 +219,7 @@ matrix matrix::Residual( const matrix & rho )
 } // FUNCTION : matrix::Residual
 
 
-
-void matrix::init_constant_dens()
-{
-    for( int i = 0; i < dim; i++ )
-    {
-      for( int j = 0; j < dim; j++ )
-      {
-        this->value[i][j] = 4;
-      }
-    }
-
-} // FUNCTION : matrix::init_constant_dens
-
-
-
-void matrix::init_sin_dens()
+void matrix::init_density()
 {
     for( int i = 0; i < dim; i++ )
     {
@@ -240,11 +228,23 @@ void matrix::init_sin_dens()
             double x = h*i;
             double y = h*j;
 
-            this->value[i][j] = -2*sin(x)*sin(y);
+            this->value[i][j] = -2.*sin(x)*sin(y);
         } // for( int j = 0; j < dim; j++ )
     } // for( int i = 0; i < dim; i++ )
 
-} //FUNCTION : matrix::init_sin_dens
+} //FUNCTION : matrix::init_density
+
+void matrix::init_potential()
+{
+    for( int i = 0; i < dim; i++ )
+    {
+        for( int j = 0; j < dim; j++ )
+        {
+            this->value[i][j] = background_pot;
+        } // for( int j = 0; j < dim; j++ )
+    } // for( int i = 0; i < dim; i++ )
+
+} //FUNCTION : matrix::init_density
 
 
 

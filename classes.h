@@ -8,6 +8,7 @@
 
 using namespace std;
 
+#define background_pot 10.
 class matrix
 { 
     int dim;
@@ -28,8 +29,8 @@ class matrix
         matrix Interpolation(int);
         matrix Residual(const matrix& rho);
   
-        void init_constant_dens();
-        void init_sin_dens();
+        void init_density();
+        void init_potential();
   
         double get_h();
         double get_dim();

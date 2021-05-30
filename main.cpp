@@ -3,8 +3,8 @@
 
 
 double f( const double x, const double y )
-{
-    return sin(x) * sin(y);
+{   
+    return sin(x) * sin(y) + background_pot;
 } // FUNCTION : f
 
 
@@ -31,10 +31,10 @@ void solved( matrix &m )
 
 
 matrix V_Cycle( matrix phi, matrix dens )
-{
+{   
     // Pre-Smoothing
     phi.SOR_smoothing( dens, 1.7, 3 );
-  
+    
     // Compute Residual Errors
     matrix r = phi.Residual( dens );
   
@@ -149,12 +149,13 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
 
 int main()
 {
-    int N = 8000;
+    int N = 10;
     double h = PI/(N-1);
     matrix pot( N, h );
-  
+    pot.init_potential();
+    
     matrix dens( N, h );
-    dens.init_sin_dens();
+    dens.init_density();
     
     matrix ans( N, h );
     solved(ans);
