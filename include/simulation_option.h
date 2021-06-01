@@ -1,4 +1,5 @@
 // Simulation option 
+#define N_DIMS          2
 #define BOX_N           200
 
 // Solver
