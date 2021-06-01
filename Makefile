@@ -9,8 +9,6 @@ OBJS   = $(SRCS:%.cpp=$(OBJDIR)/%.o)
 
 FLAGS  = -fopenmp -Wall
 
-obj:=main.o matrix.o
-
 all: $(OUT)
 	@echo "=========================================="
 	@echo "Compiler          : $(CC)"
