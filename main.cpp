@@ -1,7 +1,7 @@
+#include "macro.h"
 #include "classes.h"
-#define PI 3.14159265359
-
 #include "solver.h"
+#include "simulation_option.h"
 
 double f( const double x, const double y )
 {   
@@ -44,36 +44,25 @@ int main()
     matrix ans( N, h );
     solved(ans);
     
-    /*matrix solution = V_Cycle( pot, dens );
-    pot.init_potential();
-    matrix solution2 = W_Cycle( pot, dens, 1 );
-    pot.init_potential();
-        
-    solution.Error( ans );
-    solution2.Error( ans );*/
-
-    
     auto start = chrono::steady_clock::now();
 
-    // V,W-Cycle
+    // solve potential
+#   if ( POT_SOLVER == SOR ) 
+    // empty now
+#   elif ( POT_SOLVER == V_CYCLE ) 
     matrix solution = V_Cycle( pot, dens );
-    pot.init_potential();
-    matrix solution2 = W_Cycle( pot, dens, 1 );
-    pot.init_potential();
-        
-    solution.Error( ans );
-    solution2.Error( ans );
-    
-    //FMG Method
-    matrix solution3 = FMG_Method( pot, dens,2);
-    
-    pot.init_potential();
+#   elif ( POT_SOLVER == W_CYCLE ) 
+    matrix solution = W_Cycle( pot, dens, 1 );
+#   elif ( POT_SOLVER == FAS ) 
+    // empty now
+#   elif ( POT_SOLVER == FMG ) 
+    matrix solution = FMG_Method( pot, dens, 2 );
+#   endif // #if ( POT_SOLVER == ... )
 
-    matrix ans3(solution3.get_dim(),solution3.get_h());
-    solved(ans3);
-    solution3.Error(ans3);
+    solution.Error( ans ); // print the error
 
     auto elapsed = chrono::steady_clock::now() - start;
     auto sec_double = chrono::duration<double>(elapsed);     // double
-    cout<<sec_double.count()<<endl;
+    cout << sec_double.count() << endl;
+
 } // FUNCTION : main 
