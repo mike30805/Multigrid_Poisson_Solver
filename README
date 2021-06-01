@@ -1,0 +1,5 @@
+Run the program:
+1. make clean
+2. make
+3. cd bin
+4. ./main
