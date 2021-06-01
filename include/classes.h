@@ -7,6 +7,9 @@
 #include<chrono>
 #include "vector"
 
+#include "macro.h"
+#include "simulation_option.h"
+
 #ifdef OMP_PARALLEL
 #include<omp.h>
 #endif

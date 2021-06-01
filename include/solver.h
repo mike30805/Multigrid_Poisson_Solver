@@ -1,6 +1,9 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
+#include "macro.h"
+#include "simulation_option.h"
+
 matrix V_Cycle( matrix phi, matrix dens );
 
 matrix W_Cycle( matrix phi, matrix dens, const int LR );
