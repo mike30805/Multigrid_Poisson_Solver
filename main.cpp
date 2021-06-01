@@ -1,5 +1,6 @@
 #include "macro.h"
 #include "classes.h"
+#include "particle.h"
 #include "solver.h"
 #include "simulation_option.h"
 
