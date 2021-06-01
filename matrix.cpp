@@ -23,16 +23,20 @@ matrix::~matrix()
 } // DESTRUCTURE : matrix::~matrix()
 
 
-double absolute(double x){
-    if(x>=0) return x;
+
+double absolute( double x )
+{
+    if ( x >= 0 )   return x;
     return -x;
 } // FUNCTION : absolute()
 
+
+
 void matrix::display()
 {
-    for( int i=0; i<dim; i++ )
+    for( int i = 0; i < dim; i++ )
     {
-        for( int j=0; j<dim; j++ )
+        for( int j = 0; j < dim; j++ )
         {
             cout << value[i][j] << " ";
         }
@@ -65,37 +69,49 @@ void matrix::Error( const matrix &b )
 
 void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
 {
-     for (int t = 0; t < steps; t++) {
-#  pragma omp parallel num_threads(2) 
-            {
-                const int tid = omp_get_thread_num();
-                
-#     pragma omp for collapse(2)
-                    for (int i = 0; i < dim; i++) {
-                        for (int j = 0; j < dim; j++) {
-                            if ((i + j) % 2 == 0) {
-                                if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1) {
-                                    this->value[i][j] += omega * 0.25 * (this->value[i + 1][j] + this->value[i - 1][j] + this->value[i][j + 1] + this->value[i][j - 1] - this->value[i][j] * 4 - h * h * rho.value[i][j]);
-                                } //if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1)
-                            } //if ((i + j) % 2 == 0)
-                        } //for (int j = 0; j < dim; j++)
-                    } //for (int i = 0; i < dim; i++) 
-                
-#     pragma omp barrier
-#     pragma omp for collapse(2)
-                    for (int i = 0; i < dim; i++) {
-                        for (int j = 0; j < dim; j++) {
-                            if ((i + j) % 2 == 1) {
-                                if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1) {
-                                    this->value[i][j] += omega * 0.25 * (this->value[i + 1][j] + this->value[i - 1][j] + this->value[i][j + 1] + this->value[i][j - 1] - this->value[i][j] * 4 - h * h * rho.value[i][j]);
-                                } //if (i != 0 && i != dim - 1 && j != 0 && j != dim - 1)
-                            } //if ((i + j) % 2 == 1)
-                        } //for (int j = 0; j < dim; j++)
-                    } //for (int i = 0; i < dim; i++) 
-                
+     for ( int t = 0; t < steps; t++ )
+     {
+#    ifdef OMP_PARALLEL
+#    pragma omp parallel num_threads(2) 
+     {
+         const int tid = omp_get_thread_num();
 
-            } //#    pragma omp parallel
-        } //for (int t = 0; t < steps; t++)
+#        pragma omp for collapse(2)
+#    endif // #ifdef OMP_PARALLEL
+         for ( int i = 0; i < dim; i++ ) 
+         {
+             for ( int j = 0; j < dim; j++ )
+             {
+                 if ( (i + j) % 2 != 0 )    continue;
+                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
+
+                 this->value[i][j] += omega * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
+                                                       this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
+                                                       this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
+             } // for ( int j = 0; j < dim; j++ )
+         } // for ( int i = 0; i < dim; i++ ) 
+
+#        ifdef OMP_PARALLEL
+#        pragma omp barrier
+#        pragma omp for collapse(2)
+#        endif // #ifdef OMP_PARALLEL
+        for ( int i = 0; i < dim; i++ )
+        {
+            for ( int j = 0; j < dim; j++ )
+            {
+                if ( (i + j) % 2 != 1 )     continue;
+                if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
+                
+                this->value[i][j] += omega * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
+                                                      this->value[ i   ][ j+1 ] + this->value[ i   ][ j-1 ] - 
+                                                      this->value[ i   ][ j   ] * 4 - h * h * rho.value[i][j]);
+            } // for ( int j = 0; j < dim; j++ )
+        } // for ( int i = 0; i < dim; i++ ) 
+
+#    ifdef OMP_PARALLEL
+     } // # pragma omp parallel
+#    endif // #ifdef OMP_PARALLEL
+     } //for ( int t = 0; t < steps; t++ )
 
 } // FUNCTION : matrix::SOR_smoothing
 
@@ -318,6 +334,8 @@ matrix matrix::operator+( const matrix &b )
     return tmp;
 
 } // FUNCTION : matrix::operator+
+
+
 
 matrix matrix::operator-( const matrix &b )
 {

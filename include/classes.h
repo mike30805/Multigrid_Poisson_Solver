@@ -4,9 +4,12 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
-#include<omp.h>
 #include<chrono>
 #include "vector"
+
+#ifdef OMP_PARALLEL
+#include<omp.h>
+#endif
 
 using namespace std;
 
