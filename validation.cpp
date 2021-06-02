@@ -24,9 +24,8 @@ bool Validate()
         return false;
     }
 
-
-    if ( POT_SOLVER != SOR || POT_SOLVER != V_CYCLE || POT_SOLVER != W_CYCLE || 
-         POT_SOLVER != FAS || POT_SOLVER != FMG )
+    if ( POT_SOLVER != SOR && POT_SOLVER != V_CYCLE && POT_SOLVER != W_CYCLE && 
+         POT_SOLVER != FAS && POT_SOLVER != FMG )
     {
         printf( "ERROR: Potential solver should be one of those: SOR / V_CYCLE / W_CYCLE / FAS / FMG .\n");
         return false;
@@ -37,7 +36,7 @@ bool Validate()
     }
 
 
-    if ( MASS_TO_CELL != NGP || MASS_TO_CELL != CIC || MASS_TO_CELL != TSC )
+    if ( MASS_TO_CELL != NGP && MASS_TO_CELL != CIC && MASS_TO_CELL != TSC )
     {
         printf( "ERROR: Particle mass deposition method should be one of those: NGP / CIC / TSC .\n" );
         return false;
