@@ -1,4 +1,5 @@
 #include "macro.h"
+#include "validate.h"
 #include "classes.h"
 #include "particle.h"
 #include "solver.h"
@@ -34,6 +35,8 @@ void solved( matrix &m )
 
 int main()
 {
+    if ( not Validate() ) return 0;
+
     int N = 2000;
     double h = PI/(N-1);
     matrix pot( N, h );
