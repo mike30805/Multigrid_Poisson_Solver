@@ -3,7 +3,7 @@
 
 
 // box
-#define BOX_DX          BOX_L / BOX_N       // cell center grid
+#define BOX_DX          BOX_L / (BOX_N-1)       // NOT cell center grid
 
 
 // solver type
