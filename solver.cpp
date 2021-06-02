@@ -69,8 +69,8 @@ matrix V_Cycle( matrix phi, matrix dens )
 //--------------------------------------------------------------------------------
 matrix W_Cycle( matrix phi, matrix dens, const int LR )
 {
-     const int smooth_step  = 100;
-     const int exact_step   = 3;
+     const int smooth_step  = 3;
+     const int exact_step   = 100;
      const double SOR_omega = 1.9;
      const int n = dens.get_dim();
      
