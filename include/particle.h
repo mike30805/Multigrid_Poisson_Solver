@@ -24,15 +24,17 @@ class particle
        particle( double mass, double *pos, double *vel );
        ~particle();
 
-       void update_all( const double *vel, const double *acc, const double dt );
+       void Par_UpdateAll( const double *vel, const double *acc, const double dt );
+       void Par_AddMassToCell( double **source );
 
-       void set_pos( const double *pos );
-       void set_vel( const double *vel );
-       void set_acc( const double *acc );
+       void Par_SetPos( const double *pos );
+       void Par_SetVel( const double *vel );
+       void Par_SetAcc( const double *acc );
        
-       void get_pos( double *pos );
-       void get_vel( double *vel );
-       void get_acc( double *acc );
+       void Par_GetPos( double *pos );
+       void Par_GetVel( double *vel );
+       void Par_GetAcc( double *acc );
+
 }; // CLASS : particle
 
 

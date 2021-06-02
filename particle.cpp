@@ -24,8 +24,56 @@ particle::~particle()
 
 
 
+void particle::Par_AddMassToCell( double **source )
+{
+    const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
+    
+    // 1. get particle position cell index in the grid
+    int pos_idx[N_DIMS];
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        pos_idx[d] = this->par_pos[d] / BOX_DX;
+    } // for ( int d = 0; d < N_DIMS; d++ )
 
-void particle::update_all( const double *vel, const double *acc, const double dt )
+    // 2. calculate particle mass in cell
+    #if ( MASS_TO_CELL == NGP )
+    source[ pos_idx[0] ][ pos_idx[1] ] += this->par_mass * _cell_vol;
+    
+    #elif ( MASS_TO_CELL == CIC )
+    double L_frac[N_DIMS];      // mass fraction of left cell
+    int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
+    
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        const double dist_to_left = par_pos[d]/BOX_DX - pos_idx; // in unit of BOX_DX
+        if ( dist_to_left < 0.5 ) // particle in the left half cell
+        {
+            L_frac[d] = 0.5 - dist_to_left;
+            cell_shift[d] = 0;
+        } else
+        {
+            L_frac[d] = 1.5 - dist_to_left;
+            cell_shift[d] = 1;
+        } // if ( dist_to_left < 0.5 ) ... else ...
+
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    // deposit the mass to cell
+    source[ pos_idx[0]-1+cell_shift[0] ][ pos_idx[1]-1+cell_shift[1] ] +=     xL_frac  *     yL_frac  * this->par_mass * _cell_vol;
+    source[ pos_idx[0]-1+cell_shift[0] ][ pos_idx[1]  +cell_shift[1] ] +=     xL_frac  * (1.-yL_frac) * this->par_mass * _cell_vol;
+    source[ pos_idx[0]  +cell_shift[0] ][ pos_idx[1]-1+cell_shift[1] ] += (1.-xL_frac) *     yL_frac  * this->par_mass * _cell_vol;
+    source[ pos_idx[0]  +cell_shift[0] ][ pos_idx[1]  +cell_shift[1] ] += (1.-xL_frac) * (1.-yL_frac) * this->par_mass * _cell_vol;
+
+    #elif ( MASS_TO_CELL == TSC )
+    // empty for now
+    #endif
+
+
+} // FUNCTION : Par_AddMassToCell
+
+
+
+void particle::Par_UpdateAll( const double *vel, const double *acc, const double dt )
 {
     for ( int d = 0; d < N_DIMS; d++ )
     {
@@ -34,52 +82,52 @@ void particle::update_all( const double *vel, const double *acc, const double dt
     } // for ( int d = 0; d < N_DIMS; d++ )
     return;
 
-} // FUNCTION : particle::update_all
+} // FUNCTION : particle::Par_UpdateAll
 
 
 
-void particle::set_pos( const double *pos )
+void particle::Par_SetPos( const double *pos )
 {
     for ( int d = 0; d < N_DIMS; d++ )    this->par_pos[d] = pos[d];
     return;
-} // FUNCTION : particle::set_pos
+} // FUNCTION : particle::Par_SetPos
 
 
 
-void particle::set_vel( const double *vel )
+void particle::Par_SetVel( const double *vel )
 {
     for ( int d = 0; d < N_DIMS; d++ )    this->par_vel[d] = vel[d];
     return;
-} // FUNCTION : particle::set_vel
+} // FUNCTION : particle::Par_SetVel
 
 
 
-void particle::set_acc( const double *acc )
+void particle::Par_SetAcc( const double *acc )
 {
     for ( int d = 0; d < N_DIMS; d++ )    this->par_acc[d] = acc[d];
     return;
-} // FUNCTION : particle::set_acc
+} // FUNCTION : particle::Par_SetAcc
 
 
 
-void particle::get_pos( double *pos )
+void particle::Par_GetPos( double *pos )
 {
     for ( int d = 0; d < N_DIMS; d++ )    pos[d] = this->par_pos[d];
     return;
-} // FUNCTION : particle::get_pos
+} // FUNCTION : particle::Par_GetPos
 
 
 
-void particle::get_vel( double *vel )
+void particle::Par_GetVel( double *vel )
 {
     for ( int d = 0; d < N_DIMS; d++ )    vel[d] = this->par_vel[d];
     return;
-} // FUNCTION : particle::get_vel
+} // FUNCTION : particle::Par_GetVel
 
 
 
-void particle::get_acc( double *acc )
+void particle::Par_GetAcc( double *acc )
 {
     for ( int d = 0; d < N_DIMS; d++ )    acc[d] = this->par_acc[d];
     return;
-} // FUNCTION : particle::get_acc
+} // FUNCTION : particle::Par_GetAcc
