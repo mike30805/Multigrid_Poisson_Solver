@@ -37,15 +37,13 @@ int main()
 {
     if ( not Validate() ) return 0;
 
-    int N = 2000;
-    double h = PI/(N-1);
-    matrix pot( N, h );
+    matrix pot( BOX_N, BOX_DX );
     pot.init_potential();
     
-    matrix dens( N, h );
+    matrix dens( BOX_N, BOX_DX );
     dens.init_density();
     
-    matrix ans( N, h );
+    matrix ans( BOX_N, BOX_DX );
     solved(ans);
     
     auto start = chrono::steady_clock::now();

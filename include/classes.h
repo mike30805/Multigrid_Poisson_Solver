@@ -30,7 +30,7 @@ class matrix
         void display();
         void Error(const matrix &b);
   
-        void   SOR_smoothing(const matrix& rho,double omega,int steps);
+        void   SOR_smoothing(const matrix& rho,int steps);
         double averaging(int i,int j);
         matrix Restriction();
         double insertion(int i,int j,int dim_in);

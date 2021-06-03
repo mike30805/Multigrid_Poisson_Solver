@@ -67,7 +67,7 @@ void matrix::Error( const matrix &b )
 
 
 
-void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
+void matrix::SOR_smoothing( const matrix &rho, int steps )
 {
      for ( int t = 0; t < steps; t++ )
      {
@@ -85,9 +85,9 @@ void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
                  if ( (i + j) % 2 != 0 )    continue;
                  if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
 
-                 this->value[i][j] += omega * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
-                                                       this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
-                                                       this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
+                 this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
+                                                           this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
+                                                           this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
              } // for ( int j = 0; j < dim; j++ )
          } // for ( int i = 0; i < dim; i++ ) 
 
@@ -102,7 +102,7 @@ void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
                 if ( (i + j) % 2 != 1 )     continue;
                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
                 
-                this->value[i][j] += omega * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
+                this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
                                                       this->value[ i   ][ j+1 ] + this->value[ i   ][ j-1 ] - 
                                                       this->value[ i   ][ j   ] * 4 - h * h * rho.value[i][j]);
             } // for ( int j = 0; j < dim; j++ )

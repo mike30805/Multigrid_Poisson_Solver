@@ -16,7 +16,6 @@ matrix V_Cycle( matrix phi, matrix dens )
 {   
     const int smooth_step  = 3;
     const int exact_step   = 100;
-    const double SOR_omega = 1.9;
     const int n = dens.get_dim();
 
     // the smallest grid size, do the exact solver
@@ -25,12 +24,12 @@ matrix V_Cycle( matrix phi, matrix dens )
           // Exact solver
           matrix eps( phi.get_dim(), phi.get_h() );
           matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+          eps.SOR_smoothing( dens2, exact_step );
     }
 
     else{
         // Pre-Smoothing
-        phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+        phi.SOR_smoothing( dens, smooth_step );
         
         // Compute Residual Errors
         matrix r = phi.Residual( dens );
@@ -49,7 +48,7 @@ matrix V_Cycle( matrix phi, matrix dens )
         // Post-Smoothing
     }
     
-    phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+    phi.SOR_smoothing( dens, smooth_step );
     
     return phi;
 
@@ -71,7 +70,6 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
 {
      const int smooth_step  = 3;
      const int exact_step   = 100;
-     const double SOR_omega = 1.9;
      const int n = dens.get_dim();
      
      // the smallest grid size, do the exact solver
@@ -80,13 +78,13 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           // Exact solver
           matrix eps( phi.get_dim(), phi.get_h() );
           matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+          eps.SOR_smoothing( dens2, exact_step );
      }
      // stop recursion at smallest grid size
      else if ( n <= 7 ) // if ( n <= 3 )
      {
           // Pre-Smoothing
-          phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+          phi.SOR_smoothing( dens, smooth_step );
           
           // Restriction
           matrix r = phi.Residual( dens );
@@ -95,7 +93,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           // Exact solver
           matrix eps( rhs.get_dim(), rhs.get_h() );
           matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+          eps.SOR_smoothing( dens2, exact_step );
           
           // Prolongation
           phi = phi + eps.Interpolation( phi.get_dim() );
@@ -104,13 +102,13 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           if ( LR == 1 )
           {
                // Post-Smoothing
-               phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+               phi.SOR_smoothing( dens, smooth_step );
           }
      }
      else // if ( n <= 3 ) ... else if ( n <= 7 ) ...
      {
           // Pre-Smoothing
-          phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+          phi.SOR_smoothing( dens, smooth_step );
           
           // Restriction
           matrix r   = phi.Residual( dens );
@@ -130,7 +128,7 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           if ( LR == 1 )
           {
                // Post-Smoothing
-               phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+               phi.SOR_smoothing( dens, smooth_step );
           }
      } // if ( n <= 3 ) ... else if ( n <= 7 ) ... else ...
      
@@ -152,7 +150,6 @@ matrix FAS_Method( matrix phi, matrix dens )
 {   
     const int smooth_step  = 3;
     const int exact_step   = 100;
-    const double SOR_omega = 1.9;
     const int n = dens.get_dim();
 
     // the smallest grid size, do the exact solver
@@ -161,12 +158,12 @@ matrix FAS_Method( matrix phi, matrix dens )
           // Exact solver
           matrix eps( phi.get_dim(), phi.get_h() );
           matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, SOR_omega, exact_step );
+          eps.SOR_smoothing( dens2, exact_step );
     }
 
     else{
         // Pre-Smoothing
-        phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+        phi.SOR_smoothing( dens, smooth_step );
         
         // Compute Residual Errors
         matrix res = phi.Residual( dens );
@@ -186,7 +183,7 @@ matrix FAS_Method( matrix phi, matrix dens )
         phi = phi + corr.Interpolation( phi.get_dim() );
         
         // Post-Smoothing
-        phi.SOR_smoothing( dens, SOR_omega, smooth_step );
+        phi.SOR_smoothing( dens, smooth_step );
     }
     
     return phi;
@@ -208,11 +205,10 @@ matrix FMG_Method( matrix phi, matrix dens, int n_fmg)
 {   
     const int smooth_step  = 3;
     const int exact_step   = 100;
-    const double SOR_omega = 1.9;
     const int n = dens.get_dim();
 
     if(n<3){
-        phi.SOR_smoothing( dens, SOR_omega, exact_step );
+        phi.SOR_smoothing( dens, exact_step );
     }
     else{
         matrix phi_coarse = phi.Restriction();
