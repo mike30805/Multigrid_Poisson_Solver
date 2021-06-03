@@ -307,10 +307,18 @@ double matrix::get_h()
 } // FUNCTION : matrix::get_h
 
 
+
 double matrix::get_dim()
 {
     return this->dim;
 } // FUNCTION : matrix::get_dim
+
+
+
+double matrix::get_value( int i, int j )
+{
+    return this->value[i][j];
+} // FUNCTION : matrix::get_value
 
 
 void matrix::input_answer( int i, int j, double ans )

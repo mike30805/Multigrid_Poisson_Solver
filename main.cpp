@@ -3,6 +3,7 @@
 #include "classes.h"
 #include "particle.h"
 #include "solver.h"
+#include "output.h"
 #include "simulation_option.h"
 
 double f( const double x, const double y )
@@ -45,6 +46,9 @@ int main()
     
     matrix ans( BOX_N, BOX_DX );
     solved(ans);
+    Output_matrix( pot, "potential_init.txt");
+    Output_matrix( dens, "density.txt");
+    Output_matrix( ans, "potential_ans.txt");
     
     auto start = chrono::steady_clock::now();
 
@@ -60,11 +64,13 @@ int main()
 #   elif ( POT_SOLVER == FMG ) 
     matrix solution = FMG_Method( pot, dens, 2 );
 #   endif // #if ( POT_SOLVER == ... )
-
-    solution.Error( ans ); // print the error
-
+    
     auto elapsed = chrono::steady_clock::now() - start;
     auto sec_double = chrono::duration<double>(elapsed);     // double
-    cout << sec_double.count() << endl;
+    cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
+    
+    Output_matrix( solution, "potential_solved.txt");
+    solution.Error( ans ); // print the error
+
 
 } // FUNCTION : main 
