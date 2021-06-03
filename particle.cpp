@@ -41,7 +41,7 @@ void particle::Par_AddMassToCell( double **source )
     for ( int d = 0; d < N_DIMS; d++ )
     {
         pos_idx[d]      = this->par_pos[d] / BOX_DX;
-        dist_to_left[d] = par_pos[d]/BOX_DX - pos_idx; // in unit of BOX_DX
+        dist_to_left[d] = par_pos[d]/BOX_DX - pos_idx[d]; // in unit of BOX_DX
     } // for ( int d = 0; d < N_DIMS; d++ )
 
     // 2. calculate particle mass in cell
