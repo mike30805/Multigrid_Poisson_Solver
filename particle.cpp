@@ -26,43 +26,49 @@ particle::~particle()
 
 void particle::Par_AddMassToCell( double **source )
 {
+    // grid idx   0  |  1  |  2  |  3  |  4  |  5  |
+    //            -------------------------------------
+    // cell       | L R | L R | L R |     |     |     |
+    //            -------------------------------------
+    // grid space    |     |     |     |     |     |
+
     const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
     
-    // 1. get particle position cell index in the grid
+    // 1. get particle position left cell index in the grid
     int pos_idx[N_DIMS];
+    double dist_to_left[N_DIMS];
+
     for ( int d = 0; d < N_DIMS; d++ )
     {
-        pos_idx[d] = this->par_pos[d] / BOX_DX;
+        pos_idx[d]      = this->par_pos[d] / BOX_DX;
+        dist_to_left[d] = par_pos[d]/BOX_DX - pos_idx; // in unit of BOX_DX
     } // for ( int d = 0; d < N_DIMS; d++ )
 
     // 2. calculate particle mass in cell
     #if ( MASS_TO_CELL == NGP )
-    source[ pos_idx[0] ][ pos_idx[1] ] += this->par_mass * _cell_vol;
+    int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( dist_to_left[d] < 0.5 ) // particle in the left half cell
+        {
+            cell_shift[d] = 0;
+        } else 
+        {
+            cell_shift[d] = 1;
+        }
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    source[ pos_idx[0]+cell_shift[0] ][ pos_idx[1]+cell_shift[1] ] += this->par_mass * _cell_vol;
     
     #elif ( MASS_TO_CELL == CIC )
     double L_frac[N_DIMS];      // mass fraction of left cell
-    int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
-    
-    for ( int d = 0; d < N_DIMS; d++ )
-    {
-        const double dist_to_left = par_pos[d]/BOX_DX - pos_idx; // in unit of BOX_DX
-        if ( dist_to_left < 0.5 ) // particle in the left half cell
-        {
-            L_frac[d] = 0.5 - dist_to_left;
-            cell_shift[d] = 0;
-        } else
-        {
-            L_frac[d] = 1.5 - dist_to_left;
-            cell_shift[d] = 1;
-        } // if ( dist_to_left < 0.5 ) ... else ...
-
-    } // for ( int d = 0; d < N_DIMS; d++ )
+    for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
 
     // deposit the mass to cell
-    source[ pos_idx[0]-1+cell_shift[0] ][ pos_idx[1]-1+cell_shift[1] ] +=     xL_frac  *     yL_frac  * this->par_mass * _cell_vol;
-    source[ pos_idx[0]-1+cell_shift[0] ][ pos_idx[1]  +cell_shift[1] ] +=     xL_frac  * (1.-yL_frac) * this->par_mass * _cell_vol;
-    source[ pos_idx[0]  +cell_shift[0] ][ pos_idx[1]-1+cell_shift[1] ] += (1.-xL_frac) *     yL_frac  * this->par_mass * _cell_vol;
-    source[ pos_idx[0]  +cell_shift[0] ][ pos_idx[1]  +cell_shift[1] ] += (1.-xL_frac) * (1.-yL_frac) * this->par_mass * _cell_vol;
+    source[ pos_idx[0]   ][ pos_idx[1]   ] +=     L_frac[0]  *     L_frac[1]  * this->par_mass * _cell_vol;
+    source[ pos_idx[0]   ][ pos_idx[1]+1 ] +=     L_frac[0]  * (1.-L_frac[1]) * this->par_mass * _cell_vol;
+    source[ pos_idx[0]+1 ][ pos_idx[1]   ] += (1.-L_frac[0]) *     L_frac[1]  * this->par_mass * _cell_vol;
+    source[ pos_idx[0]+1 ][ pos_idx[1]+1 ] += (1.-L_frac[0]) * (1.-L_frac[1]) * this->par_mass * _cell_vol;
 
     #elif ( MASS_TO_CELL == TSC )
     // empty for now
