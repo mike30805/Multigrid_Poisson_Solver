@@ -3,6 +3,9 @@
 #define BOX_N           2000
 #define BOX_L           PI
 
+// Problem number (checkout macro.h)
+#define PROB_NUM        PROB_SINWAVE
+
 // Solver
 // SOR / V_CYCLE / W_CYCLE / FAS / FMG
 #define SOR_OMEGA       1.9

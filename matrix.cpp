@@ -321,6 +321,21 @@ double matrix::get_value( int i, int j )
 } // FUNCTION : matrix::get_value
 
 
+
+void matrix::set_value( int i, int j, double val )
+{
+    this->value[i][j] = val;
+} // FUNCTION : matrix::set_value
+
+
+
+void matrix::add_value( int i, int j, double val )
+{
+    this->value[i][j] += val;
+} // FUNCTION : matrix::add_value
+
+
+
 void matrix::input_answer( int i, int j, double ans )
 {
     this->value[i][j] = ans;

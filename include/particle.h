@@ -25,7 +25,7 @@ class particle
        ~particle();
 
        void Par_UpdateAll( const double *vel, const double *acc, const double dt );
-       void Par_AddMassToCell( double **source );
+       void Par_AddMassToCell( matrix &source );
 
        void Par_SetPos( const double *pos );
        void Par_SetVel( const double *vel );

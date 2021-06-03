@@ -2,6 +2,7 @@
 #include "validate.h"
 #include "classes.h"
 #include "particle.h"
+#include "initialize.h"
 #include "solver.h"
 #include "output.h"
 #include "simulation_option.h"
@@ -37,12 +38,15 @@ void solved( matrix &m )
 int main()
 {
     if ( not Validate() ) return 0;
+    bool init_status;
 
     matrix pot( BOX_N, BOX_DX );
     pot.init_potential();
     
     matrix dens( BOX_N, BOX_DX );
-    dens.init_density();
+    init_status = Init_matrix( dens );
+    if ( not init_status ) return 0;
+    //dens.init_density();
     
     matrix ans( BOX_N, BOX_DX );
     solved(ans);

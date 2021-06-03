@@ -44,6 +44,8 @@ class matrix
         double get_h();
         double get_dim();
         double get_value( int i, int j );
+        void   set_value( int i, int j, double val );
+        void   add_value( int i, int j, double val );
         void   input_answer(int i,int j,double ans);
 
         matrix operator+(const matrix&);

@@ -1,3 +1,4 @@
+#include "classes.h"
 #include "particle.h"
 
 
@@ -24,7 +25,7 @@ particle::~particle()
 
 
 
-void particle::Par_AddMassToCell( double **source )
+void particle::Par_AddMassToCell( matrix &source )
 {
     // grid idx   0  |  1  |  2  |  3  |  4  |  5  |
     //            -------------------------------------
@@ -58,18 +59,18 @@ void particle::Par_AddMassToCell( double **source )
         }
     } // for ( int d = 0; d < N_DIMS; d++ )
 
-    source[ pos_idx[0]+cell_shift[0] ][ pos_idx[1]+cell_shift[1] ] += this->par_mass * _cell_vol;
+    source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1], this->par_mass * _cell_vol );
     
     #elif ( MASS_TO_CELL == CIC )
     double L_frac[N_DIMS];      // mass fraction of left cell
     for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
 
     // deposit the mass to cell
-    source[ pos_idx[0]   ][ pos_idx[1]   ] +=     L_frac[0]  *     L_frac[1]  * this->par_mass * _cell_vol;
-    source[ pos_idx[0]   ][ pos_idx[1]+1 ] +=     L_frac[0]  * (1.-L_frac[1]) * this->par_mass * _cell_vol;
-    source[ pos_idx[0]+1 ][ pos_idx[1]   ] += (1.-L_frac[0]) *     L_frac[1]  * this->par_mass * _cell_vol;
-    source[ pos_idx[0]+1 ][ pos_idx[1]+1 ] += (1.-L_frac[0]) * (1.-L_frac[1]) * this->par_mass * _cell_vol;
-
+    source.add_value( pos_idx[0],    pos_idx[1],       L_frac[0]   *     L_frac[1]  * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0],    pos_idx[1]+1,     L_frac[0]   * (1.-L_frac[1]) * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+1,  pos_idx[1],   (1.-L_frac[0])  *     L_frac[1]  * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+1,  pos_idx[1]+1, (1.-L_frac[0])  * (1.-L_frac[1]) * this->par_mass * _cell_vol );
+    
     #elif ( MASS_TO_CELL == TSC )
     // empty for now
     #endif
