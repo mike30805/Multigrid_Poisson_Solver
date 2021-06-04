@@ -39,17 +39,21 @@ int main()
 {
     if ( not Validate() ) return 0;
     bool init_status;
+    
+    //particle *pars = NULL;
+    particle *pars = new particle[N_PARS];
 
     matrix pot( BOX_N, BOX_DX );
     pot.init_potential();
     
     matrix dens( BOX_N, BOX_DX );
-    init_status = Init_matrix( dens );
+    init_status = Init_matrix( dens, pars );
     if ( not init_status ) return 0;
     //dens.init_density();
     
     matrix ans( BOX_N, BOX_DX );
     solved(ans);
+    
     Output_matrix( pot, "potential_init.txt");
     Output_matrix( dens, "density.txt");
     Output_matrix( ans, "potential_ans.txt");
@@ -76,5 +80,7 @@ int main()
     Output_matrix( solution, "potential_solved.txt");
     solution.Error( ans ); // print the error
 
+
+    delete[] pars;
 
 } // FUNCTION : main 
