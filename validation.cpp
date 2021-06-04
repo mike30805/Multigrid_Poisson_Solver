@@ -24,6 +24,7 @@ bool Validate()
         return false;
     }
 
+
     if ( POT_SOLVER != SOR && POT_SOLVER != V_CYCLE && POT_SOLVER != W_CYCLE && 
          POT_SOLVER != FAS && POT_SOLVER != FMG )
     {
@@ -32,6 +33,13 @@ bool Validate()
     } else if ( POT_SOLVER == SOR || POT_SOLVER == FAS )
     {
         printf( "ERROR: Potential solver SOR and FAS are not support yet.\n");
+        return false;
+    }
+
+
+    if ( N_PARS < 0 )
+    {
+        printf( "ERROR: Particle number should NOT be negative.\n" );
         return false;
     }
 
@@ -45,7 +53,6 @@ bool Validate()
         printf( "ERROR: TSC method is not support yet.\n" );
         return false;
     }
-
 
 
     return true;
