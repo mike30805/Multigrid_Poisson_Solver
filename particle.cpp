@@ -2,6 +2,23 @@
 #include "particle.h"
 
 
+particle::particle()
+{
+    par_pos = new double[N_DIMS];
+    par_vel = new double[N_DIMS];
+    par_acc = new double[N_DIMS];
+
+    par_mass   = 0.0;
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        par_pos[d] = 0.0;
+        par_vel[d] = 0.0;
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+} // CONSTRUCTER : particle::particle()
+
+
+
 particle::particle( double mass, double *pos, double *vel )
 {
     par_pos = new double[N_DIMS];
@@ -39,10 +56,13 @@ void particle::Par_AddMassToCell( matrix &source )
     int pos_idx[N_DIMS];
     double dist_to_left[N_DIMS];
 
+    // There is a bug! 1.0/BOX_DX will give wrong result. 
+    printf("_BOX_DX = %.5f", 1.0/BOX_DX);
+    const double dx = BOX_DX;
     for ( int d = 0; d < N_DIMS; d++ )
     {
-        pos_idx[d]      = this->par_pos[d] / BOX_DX;
-        dist_to_left[d] = par_pos[d]/BOX_DX - pos_idx[d]; // in unit of BOX_DX
+        pos_idx[d]      = this->par_pos[d] / dx;
+        dist_to_left[d] = this->par_pos[d] / dx - pos_idx[d]; // in unit of BOX_DX
     } // for ( int d = 0; d < N_DIMS; d++ )
 
     // 2. calculate particle mass in cell
@@ -93,6 +113,14 @@ void particle::Par_UpdateAll( const double *vel, const double *acc, const double
 
 
 
+void particle::Par_SetMass( const double m )
+{
+    this->par_mass = m;
+    return;
+} // FUNCTION : particle::Par_SetMass
+
+
+
 void particle::Par_SetPos( const double *pos )
 {
     for ( int d = 0; d < N_DIMS; d++ )    this->par_pos[d] = pos[d];
@@ -114,6 +142,14 @@ void particle::Par_SetAcc( const double *acc )
     for ( int d = 0; d < N_DIMS; d++ )    this->par_acc[d] = acc[d];
     return;
 } // FUNCTION : particle::Par_SetAcc
+
+
+
+void particle::Par_GetMass( double &m )
+{
+    m = this->par_mass;
+    return;
+} // FUNCTION : particle::Par_SetMass
 
 
 

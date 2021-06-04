@@ -40,9 +40,9 @@ bool Validate()
     {
         printf( "ERROR: Particle mass deposition method should be one of those: NGP / CIC / TSC .\n" );
         return false;
-    } else if ( MASS_TO_CELL == CIC || MASS_TO_CELL == TSC )
+    } else if ( MASS_TO_CELL == TSC )
     {
-        printf( "ERROR: CIC and TSC method are not support yet.\n" );
+        printf( "ERROR: TSC method is not support yet.\n" );
         return false;
     }
 
