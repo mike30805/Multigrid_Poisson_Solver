@@ -54,9 +54,6 @@ int main()
     matrix ans( BOX_N, BOX_DX );
     solved(ans);
     
-    Output_matrix( pot, "potential_init.txt");
-    Output_matrix( dens, "density.txt");
-    Output_matrix( ans, "potential_ans.txt");
     
     auto start = chrono::steady_clock::now();
 
@@ -77,7 +74,11 @@ int main()
     auto sec_double = chrono::duration<double>(elapsed);     // double
     cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
     
+    // Output
+    Output_matrix( dens, "density.txt");
     Output_matrix( solution, "potential_solved.txt");
+    Output_particles( pars, "particle.txt" );
+    
     solution.Error( ans ); // print the error
 
 
