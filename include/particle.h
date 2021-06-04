@@ -26,7 +26,11 @@ class particle
        ~particle();
 
        void Par_UpdateAll( const double *vel, const double *acc, const double dt );
+       bool Par_InBox();
+
        void Par_AddMassToCell( matrix &source );
+       void Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const double *dist_to_left );
+       void Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const double *dist_to_left );
 
        void Par_SetMass( const double m );
        void Par_SetPos( const double *pos );

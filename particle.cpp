@@ -42,8 +42,23 @@ particle::~particle()
 
 
 
+bool particle::Par_InBox()
+{
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( this->par_pos[d] < 0.0 || BOX_L < this->par_pos[d] )    return false;
+    }
+    return true;
+ 
+} // FUNCTION : particle::Par_InBox()
+
+
+
 void particle::Par_AddMassToCell( matrix &source )
 {
+    // 0. check if the particle is in the box or not.
+    if ( not this->Par_InBox() )    return;
+    
     // grid idx   0  |  1  |  2  |  3  |  4  |  5  |
     //            -------------------------------------
     // cell       | L R | L R | L R |     |     |     |
@@ -57,7 +72,7 @@ void particle::Par_AddMassToCell( matrix &source )
     double dist_to_left[N_DIMS];
 
     // There is a bug! 1.0/BOX_DX will give wrong result. 
-    printf("_BOX_DX = %.5f", 1.0/BOX_DX);
+    // printf("_BOX_DX = %.5f", 1.0/BOX_DX);
     const double dx = BOX_DX;
     for ( int d = 0; d < N_DIMS; d++ )
     {
@@ -67,6 +82,20 @@ void particle::Par_AddMassToCell( matrix &source )
 
     // 2. calculate particle mass in cell
     #if ( MASS_TO_CELL == NGP )
+    this->Par_AddMassToCell_NGP( source, pos_idx, dist_to_left );
+    #elif ( MASS_TO_CELL == CIC )
+    this->Par_AddMassToCell_CIC( source, pos_idx, dist_to_left );
+    #elif ( MASS_TO_CELL == TSC )
+    // empty for now
+    #endif
+
+} // FUNCTION : Par_AddMassToCell
+
+
+
+void particle::Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const double *dist_to_left )
+{
+    const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
     int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
     for ( int d = 0; d < N_DIMS; d++ )
     {
@@ -79,9 +108,16 @@ void particle::Par_AddMassToCell( matrix &source )
         }
     } // for ( int d = 0; d < N_DIMS; d++ )
 
+    // deposit the mass to cell
     source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1], this->par_mass * _cell_vol );
-    
-    #elif ( MASS_TO_CELL == CIC )
+
+} // FUNCTION : Par_AddMassToCell_NGP
+
+
+
+void particle::Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const double *dist_to_left )
+{
+    const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
     double L_frac[N_DIMS];      // mass fraction of left cell
     for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
 
@@ -90,13 +126,8 @@ void particle::Par_AddMassToCell( matrix &source )
     source.add_value( pos_idx[0],    pos_idx[1]+1,     L_frac[0]   * (1.-L_frac[1]) * this->par_mass * _cell_vol );
     source.add_value( pos_idx[0]+1,  pos_idx[1],   (1.-L_frac[0])  *     L_frac[1]  * this->par_mass * _cell_vol );
     source.add_value( pos_idx[0]+1,  pos_idx[1]+1, (1.-L_frac[0])  * (1.-L_frac[1]) * this->par_mass * _cell_vol );
-    
-    #elif ( MASS_TO_CELL == TSC )
-    // empty for now
-    #endif
 
-
-} // FUNCTION : Par_AddMassToCell
+} // FUNCTION : Par_AddMassToCell_CIC
 
 
 
