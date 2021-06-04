@@ -78,7 +78,7 @@ void Init_Particle( matrix &mat, particle *pars )
     {
         for( int d = 0; d < N_DIMS; d++ )
         {
-            pos[d] = p * PI / N_PARS;
+            pos[d] = p * PI / N_PARS+0.03;
             vel[d] = 0.0;
         }
 
