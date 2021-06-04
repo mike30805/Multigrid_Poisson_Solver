@@ -86,7 +86,7 @@ void particle::Par_AddMassToCell( matrix &source )
     #elif ( MASS_TO_CELL == CIC )
     this->Par_AddMassToCell_CIC( source, pos_idx, dist_to_left );
     #elif ( MASS_TO_CELL == TSC )
-    // empty for now
+    this->Par_AddMassToCell_TSC( source, pos_idx, dist_to_left );
     #endif
 
 } // FUNCTION : Par_AddMassToCell
@@ -118,14 +118,62 @@ void particle::Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const 
 void particle::Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const double *dist_to_left )
 {
     const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
-    double L_frac[N_DIMS];      // mass fraction of left cell
+    double L_frac[N_DIMS];      // mass fraction of left cell center
     for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
 
     // deposit the mass to cell
-    source.add_value( pos_idx[0],    pos_idx[1],       L_frac[0]   *     L_frac[1]  * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0],    pos_idx[1]+1,     L_frac[0]   * (1.-L_frac[1]) * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+1,  pos_idx[1],   (1.-L_frac[0])  *     L_frac[1]  * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+1,  pos_idx[1]+1, (1.-L_frac[0])  * (1.-L_frac[1]) * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0],   pos_idx[1],       L_frac[0]  *     L_frac[1]  * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0],   pos_idx[1]+1,     L_frac[0]  * (1.-L_frac[1]) * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+1, pos_idx[1],   (1.-L_frac[0]) *     L_frac[1]  * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+1, pos_idx[1]+1, (1.-L_frac[0]) * (1.-L_frac[1]) * this->par_mass * _cell_vol );
+
+} // FUNCTION : Par_AddMassToCell_CIC
+
+
+
+void particle::Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const double *dist_to_left )
+{
+    // This is the temporary way to solve the edge case.
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( pos_idx[d] == 0 || pos_idx[d] == BOX_N-1 )
+        {
+            this->Par_AddMassToCell_CIC( source, pos_idx, dist_to_left );
+            return;
+        }
+    }
+
+    const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
+    int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
+    // mass fraction of left, middle, right cell center
+    double L_frac[N_DIMS], M_frac[N_DIMS], R_frac[N_DIMS];
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( dist_to_left[d] < 0.5 ) // particle in the left half cell
+        {
+            cell_shift[d] = 0;
+            L_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+            M_frac[d] = 0.75 -       dist_to_left[d]   *       dist_to_left[d];
+            R_frac[d] = 0.5  * ( 0.5+dist_to_left[d] ) * ( 0.5+dist_to_left[d] );
+        } else 
+        {
+            cell_shift[d] = 1;
+            L_frac[d] = 0.5  * ( 1.5-dist_to_left[d] ) * ( 1.5-dist_to_left[d] );
+            M_frac[d] = 0.75 - ( 1.0-dist_to_left[d] ) * ( 1.0-dist_to_left[d] );
+            R_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+        }
+
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    source.add_value( pos_idx[0]+cell_shift[0]-1, pos_idx[1]+cell_shift[1]-1, L_frac[0] * L_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]-1, pos_idx[1]+cell_shift[1]  , L_frac[0] * M_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]-1, pos_idx[1]+cell_shift[1]+1, L_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]  , pos_idx[1]+cell_shift[1]-1, M_frac[0] * L_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]  , pos_idx[1]+cell_shift[1]  , M_frac[0] * M_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]  , pos_idx[1]+cell_shift[1]+1, M_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]-1, R_frac[0] * L_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]  , R_frac[0] * M_frac[1] * this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]+1, R_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
 
 } // FUNCTION : Par_AddMassToCell_CIC
 

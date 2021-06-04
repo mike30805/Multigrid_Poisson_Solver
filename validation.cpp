@@ -50,8 +50,7 @@ bool Validate()
         return false;
     } else if ( MASS_TO_CELL == TSC )
     {
-        printf( "ERROR: TSC method is not support yet.\n" );
-        return false;
+        printf( "Notice: The edge case will be solved by the CIC method.\n" );
     }
 
 
