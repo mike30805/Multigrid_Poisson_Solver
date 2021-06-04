@@ -1,7 +1,11 @@
 // Simulation option 
 #define N_DIMS          2
-#define BOX_N           2000
+#define BOX_N           100
 #define BOX_L           PI
+
+// Problem number (checkout macro.h)
+//#define PROB_NUM        PROB_SINWAVE
+#define PROB_NUM        PROB_PARTICLE
 
 // Solver
 // SOR / V_CYCLE / W_CYCLE / FAS / FMG
@@ -12,5 +16,6 @@
 #define OMP_PARALLEL
 
 // Particle
+#define N_PARS          10
 // NGP / CIC / TSC
-#define MASS_TO_CELL    NGP
+#define MASS_TO_CELL    CIC

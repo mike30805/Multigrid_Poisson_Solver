@@ -24,6 +24,7 @@ bool Validate()
         return false;
     }
 
+
     if ( POT_SOLVER != SOR && POT_SOLVER != V_CYCLE && POT_SOLVER != W_CYCLE && 
          POT_SOLVER != FAS && POT_SOLVER != FMG )
     {
@@ -36,16 +37,22 @@ bool Validate()
     }
 
 
+    if ( N_PARS < 0 )
+    {
+        printf( "ERROR: Particle number should NOT be negative.\n" );
+        return false;
+    }
+
+
     if ( MASS_TO_CELL != NGP && MASS_TO_CELL != CIC && MASS_TO_CELL != TSC )
     {
         printf( "ERROR: Particle mass deposition method should be one of those: NGP / CIC / TSC .\n" );
         return false;
-    } else if ( MASS_TO_CELL == CIC || MASS_TO_CELL == TSC )
+    } else if ( MASS_TO_CELL == TSC )
     {
-        printf( "ERROR: CIC and TSC method are not support yet.\n" );
+        printf( "ERROR: TSC method is not support yet.\n" );
         return false;
     }
-
 
 
     return true;

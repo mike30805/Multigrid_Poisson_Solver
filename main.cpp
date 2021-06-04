@@ -2,6 +2,7 @@
 #include "validate.h"
 #include "classes.h"
 #include "particle.h"
+#include "initialize.h"
 #include "solver.h"
 #include "output.h"
 #include "simulation_option.h"
@@ -37,18 +38,22 @@ void solved( matrix &m )
 int main()
 {
     if ( not Validate() ) return 0;
+    bool init_status;
+    
+    //particle *pars = NULL;
+    particle *pars = new particle[N_PARS];
 
     matrix pot( BOX_N, BOX_DX );
     pot.init_potential();
     
     matrix dens( BOX_N, BOX_DX );
-    dens.init_density();
+    init_status = Init_matrix( dens, pars );
+    if ( not init_status ) return 0;
+    //dens.init_density();
     
     matrix ans( BOX_N, BOX_DX );
     solved(ans);
-    Output_matrix( pot, "potential_init.txt");
-    Output_matrix( dens, "density.txt");
-    Output_matrix( ans, "potential_ans.txt");
+    
     
     auto start = chrono::steady_clock::now();
 
@@ -69,8 +74,14 @@ int main()
     auto sec_double = chrono::duration<double>(elapsed);     // double
     cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
     
+    // Output
+    Output_matrix( dens, "density.txt");
     Output_matrix( solution, "potential_solved.txt");
+    Output_particles( pars, "particle.txt" );
+    
     solution.Error( ans ); // print the error
 
+
+    delete[] pars;
 
 } // FUNCTION : main 

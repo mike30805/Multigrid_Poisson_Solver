@@ -6,6 +6,11 @@
 #define BOX_DX          BOX_L / (BOX_N-1)       // NOT cell center grid
 
 
+// problem number
+#define PROB_SINWAVE    1
+#define PROB_PARTICLE   2
+
+
 // solver type
 #define SOR             1
 #define V_CYCLE         2
