@@ -56,7 +56,7 @@ void Init_SinWave( matrix &mat, particle *pars )
 
 //--------------------------------------------------------------------------------
 // Function    : Init_Particle
-// Description :
+// Description : Problem number 2
 // Note        :
 // Input       : mat : matrix
 // Output      : 
@@ -78,7 +78,7 @@ void Init_Particle( matrix &mat, particle *pars )
     {
         for( int d = 0; d < N_DIMS; d++ )
         {
-            pos[d] = 1.07;
+            pos[d] = p * PI / N_PARS;
             vel[d] = 0.0;
         }
 

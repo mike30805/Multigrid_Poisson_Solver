@@ -1,6 +1,6 @@
 // Simulation option 
 #define N_DIMS          2
-#define BOX_N           2000
+#define BOX_N           100
 #define BOX_L           PI
 
 // Problem number (checkout macro.h)
@@ -16,6 +16,6 @@
 #define OMP_PARALLEL
 
 // Particle
-#define N_PARS          1
+#define N_PARS          10
 // NGP / CIC / TSC
 #define MASS_TO_CELL    CIC
