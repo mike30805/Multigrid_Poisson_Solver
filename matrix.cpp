@@ -67,7 +67,7 @@ void matrix::Error( const matrix &b )
 
 
 
-void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
+void matrix::SOR_smoothing( const matrix &rho, int steps )
 {
      for ( int t = 0; t < steps; t++ )
      {
@@ -85,9 +85,9 @@ void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
                  if ( (i + j) % 2 != 0 )    continue;
                  if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
 
-                 this->value[i][j] += omega * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
-                                                       this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
-                                                       this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
+                 this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
+                                                           this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
+                                                           this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
              } // for ( int j = 0; j < dim; j++ )
          } // for ( int i = 0; i < dim; i++ ) 
 
@@ -95,22 +95,23 @@ void matrix::SOR_smoothing( const matrix &rho, double omega, int steps )
 #        pragma omp barrier
 #        pragma omp for collapse(2)
 #        endif // #ifdef OMP_PARALLEL
-        for ( int i = 0; i < dim; i++ )
-        {
-            for ( int j = 0; j < dim; j++ )
-            {
-                if ( (i + j) % 2 != 1 )     continue;
-                if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
+         for ( int i = 0; i < dim; i++ )
+         {
+             for ( int j = 0; j < dim; j++ )
+             {
+                 if ( (i + j) % 2 != 1 )     continue;
+                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
                 
-                this->value[i][j] += omega * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
-                                                      this->value[ i   ][ j+1 ] + this->value[ i   ][ j-1 ] - 
-                                                      this->value[ i   ][ j   ] * 4 - h * h * rho.value[i][j]);
-            } // for ( int j = 0; j < dim; j++ )
-        } // for ( int i = 0; i < dim; i++ ) 
+                 this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
+                                                           this->value[ i   ][ j+1 ] + this->value[ i   ][ j-1 ] - 
+                                                           this->value[ i   ][ j   ] * 4 - h * h * rho.value[i][j]);
+             } // for ( int j = 0; j < dim; j++ )
+         } // for ( int i = 0; i < dim; i++ ) 
 
 #    ifdef OMP_PARALLEL
      } // # pragma omp parallel
 #    endif // #ifdef OMP_PARALLEL
+
      } //for ( int t = 0; t < steps; t++ )
 
 } // FUNCTION : matrix::SOR_smoothing
@@ -306,10 +307,33 @@ double matrix::get_h()
 } // FUNCTION : matrix::get_h
 
 
+
 double matrix::get_dim()
 {
     return this->dim;
 } // FUNCTION : matrix::get_dim
+
+
+
+double matrix::get_value( int i, int j )
+{
+    return this->value[i][j];
+} // FUNCTION : matrix::get_value
+
+
+
+void matrix::set_value( int i, int j, double val )
+{
+    this->value[i][j] = val;
+} // FUNCTION : matrix::set_value
+
+
+
+void matrix::add_value( int i, int j, double val )
+{
+    this->value[i][j] += val;
+} // FUNCTION : matrix::add_value
+
 
 
 void matrix::input_answer( int i, int j, double ans )

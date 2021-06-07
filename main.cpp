@@ -1,7 +1,10 @@
 #include "macro.h"
+#include "validate.h"
 #include "classes.h"
 #include "particle.h"
+#include "initialize.h"
 #include "solver.h"
+#include "output.h"
 #include "simulation_option.h"
 
 double f( const double x, const double y )
@@ -34,16 +37,23 @@ void solved( matrix &m )
 
 int main()
 {
-    int N = 2000;
-    double h = PI/(N-1);
-    matrix pot( N, h );
+    if ( not Validate() ) return 0;
+    bool init_status;
+    
+    //particle *pars = NULL;
+    particle *pars = new particle[N_PARS];
+
+    matrix pot( BOX_N, BOX_DX );
     pot.init_potential();
     
-    matrix dens( N, h );
-    dens.init_density();
+    matrix dens( BOX_N, BOX_DX );
+    init_status = Init_matrix( dens, pars );
+    if ( not init_status ) return 0;
+    //dens.init_density();
     
-    matrix ans( N, h );
+    matrix ans( BOX_N, BOX_DX );
     solved(ans);
+    
     
     auto start = chrono::steady_clock::now();
 
@@ -59,11 +69,19 @@ int main()
 #   elif ( POT_SOLVER == FMG ) 
     matrix solution = FMG_Method( pot, dens, 2 );
 #   endif // #if ( POT_SOLVER == ... )
-
-    solution.Error( ans ); // print the error
-
+    
     auto elapsed = chrono::steady_clock::now() - start;
     auto sec_double = chrono::duration<double>(elapsed);     // double
-    cout << sec_double.count() << endl;
+    cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
+    
+    // Output
+    Output_matrix( dens, "density.txt");
+    Output_matrix( solution, "potential_solved.txt");
+    Output_particles( pars, "particle.txt" );
+    
+    solution.Error( ans ); // print the error
+
+
+    delete[] pars;
 
 } // FUNCTION : main 

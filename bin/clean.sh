@@ -1,1 +1,1 @@
-rm ./bin/main
+rm  *.txt

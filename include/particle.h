@@ -21,18 +21,28 @@ class particle
    double *par_acc;
 
    public:
+       particle();
        particle( double mass, double *pos, double *vel );
        ~particle();
 
-       void update_all( const double *vel, const double *acc, const double dt );
+       void Par_UpdateAll( const double *vel, const double *acc, const double dt );
+       bool Par_InBox();
 
-       void set_pos( const double *pos );
-       void set_vel( const double *vel );
-       void set_acc( const double *acc );
+       void Par_AddMassToCell( matrix &source );
+       void Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const double *dist_to_left );
+       void Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const double *dist_to_left );
+       void Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const double *dist_to_left );
+
+       void Par_SetMass( const double m );
+       void Par_SetPos( const double *pos );
+       void Par_SetVel( const double *vel );
+       void Par_SetAcc( const double *acc );
        
-       void get_pos( double *pos );
-       void get_vel( double *vel );
-       void get_acc( double *acc );
+       void Par_GetMass( double &m );
+       void Par_GetPos( double *pos );
+       void Par_GetVel( double *vel );
+       void Par_GetAcc( double *acc );
+
 }; // CLASS : particle
 
 
