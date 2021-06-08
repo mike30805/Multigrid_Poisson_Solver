@@ -33,6 +33,11 @@ class particle
        void Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const double *dist_to_left );
        void Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const double *dist_to_left );
 
+       void Par_SumAcc( double *acc, double ***force );
+       void Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx, const double *dist_to_left );
+       void Par_SumAcc_CIC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left );
+       void Par_SumAcc_TSC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left );
+
        void Par_SetMass( const double m );
        void Par_SetPos( const double *pos );
        void Par_SetVel( const double *vel );
