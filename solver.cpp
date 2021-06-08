@@ -3,6 +3,99 @@
 #include "solver.h"
 
 
+//--------------------------------------------------------------------------------
+// Function    : Solver_Potential
+// Description : 
+// Note        :
+// Input       : phi  : Potential of the test problem
+//               dens : Density
+// Output      : Solved potential 2D array
+//--------------------------------------------------------------------------------
+matrix Solver_Potential( matrix pot, matrix dens )
+{
+#   if ( POT_SOLVER == SOR ) 
+    matrix solution = SOR_Method( pot, dens );
+#   elif ( POT_SOLVER == V_CYCLE ) 
+    matrix solution = V_Cycle( pot, dens );
+#   elif ( POT_SOLVER == W_CYCLE ) 
+    matrix solution = W_Cycle( pot, dens, 1 );
+#   elif ( POT_SOLVER == FAS ) 
+    // empty now
+#   elif ( POT_SOLVER == FMG ) 
+    matrix solution = FMG_Method( pot, dens, 2 );
+#   endif // #if ( POT_SOLVER == ... )
+
+    return solution;
+
+} // FUNCTION : Solver_Potential
+
+
+
+//--------------------------------------------------------------------------------
+// Function    : Solver_Force
+// Description : 
+// Note        :
+// Input       : pot  : Potential of the test problem
+// Output      : Solved force 3D array
+//--------------------------------------------------------------------------------
+void Solver_Force( matrix pot, double ***force )
+{
+    const double dx = BOX_DX;
+    int di, dj;
+
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( d == 0 )
+        {
+            di = 1;
+            dj = 0;
+        } else if ( d == 1 )
+        {
+            di = 0;
+            dj = 1;
+        } // if ( d == 0 ) ... else if ...
+
+        for ( int i = 0; i < BOX_N; i++ )
+        {
+            for ( int j = 0; j < BOX_N; j++ )
+            {
+                if ( (d == 0 && i == 0) || (d == 1 && j == 0) )
+                {
+                    force[d][i][j] = -( pot.get_value(i+di, j+dj) - pot.get_value(i, j) ) / dx;
+                } else if ( (d == 0 && i == BOX_N-1) || ( d == 1 && j == BOX_N-1) )
+                {
+                    force[d][i][j] = -( pot.get_value(i, j) - pot.get_value(i-di, j-dj) ) / dx;
+                } else
+                {
+                    force[d][i][j] = -0.5 * ( pot.get_value(i+di, j+dj) - pot.get_value(i-di, j-dj) ) / dx;
+                } // if ( i == 0 || j == 0 ) ... else if ... else ...
+
+            } // for ( int j = 0; j < BOX_N; j++ )
+        } // for ( int i = 0; i < BOX_N; i++ )
+
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+} // FUNCTION : Solver_Force
+
+
+
+//--------------------------------------------------------------------------------
+// Function    : SOR_Method
+// Description : 
+// Note        :
+// Input       : phi  : Potential of the test problem
+//               dens : Density
+// Output      : Solved potential 2D array
+//--------------------------------------------------------------------------------
+matrix SOR_Method( matrix phi, matrix dens )
+{   
+    phi.SOR_Exact( dens, SOR_EXACT_STEP );
+    
+    return phi;
+
+} // FUNCTION : V_Cycle
+
+
 
 //--------------------------------------------------------------------------------
 // Function    : V_Cycle
@@ -14,8 +107,9 @@
 //--------------------------------------------------------------------------------
 matrix V_Cycle( matrix phi, matrix dens )
 {   
-    const int smooth_step  = 3;
-    const int exact_step   = 100;
+    const int smooth_step  = SOR_SMOOTH_STEP;
+    const int exact_step   = SOR_EXACT_STEP;
+
     const int n = dens.get_dim();
 
     // the smallest grid size, do the exact solver
@@ -68,8 +162,8 @@ matrix V_Cycle( matrix phi, matrix dens )
 //--------------------------------------------------------------------------------
 matrix W_Cycle( matrix phi, matrix dens, const int LR )
 {
-     const int smooth_step  = 3;
-     const int exact_step   = 100;
+     const int smooth_step  = SOR_SMOOTH_STEP;
+     const int exact_step   = SOR_EXACT_STEP;
      const int n = dens.get_dim();
      
      // the smallest grid size, do the exact solver
@@ -148,8 +242,8 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
 //--------------------------------------------------------------------------------
 matrix FAS_Method( matrix phi, matrix dens )
 {   
-    const int smooth_step  = 3;
-    const int exact_step   = 100;
+    const int smooth_step  = SOR_SMOOTH_STEP;
+    const int exact_step   = SOR_EXACT_STEP;
     const int n = dens.get_dim();
 
     // the smallest grid size, do the exact solver
@@ -203,8 +297,8 @@ matrix FAS_Method( matrix phi, matrix dens )
 //--------------------------------------------------------------------------------
 matrix FMG_Method( matrix phi, matrix dens, int n_fmg)
 {   
-    const int smooth_step  = 3;
-    const int exact_step   = 100;
+    const int smooth_step  = SOR_SMOOTH_STEP;
+    const int exact_step   = SOR_EXACT_STEP;
     const int n = dens.get_dim();
 
     if(n<3){
