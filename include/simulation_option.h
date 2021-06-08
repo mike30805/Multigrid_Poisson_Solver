@@ -5,7 +5,7 @@
 
 
 // Simulation time
-#define END_TIME                0.02                             // Simulation end time.
+#define END_TIME                3.0                             // Simulation end time.
 
 
 // Problem number (checkout macro.h)
