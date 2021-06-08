@@ -1,21 +1,39 @@
 // Simulation option 
-#define N_DIMS          2
-#define BOX_N           50
-#define BOX_L           PI
+#define N_DIMS                  2                               // Simulation dimensions.
+#define BOX_N                   200                             // Simulation resolution.
+#define BOX_L                   6.0                             // Simulation box size.
+
+
+// Simulation time
+#define END_TIME                0.02                             // Simulation end time.
+
 
 // Problem number (checkout macro.h)
-//#define PROB_NUM        PROB_SINWAVE
-#define PROB_NUM        PROB_PARTICLE
+//#define PROB_NUM               PROB_SINWAVE
+#define PROB_NUM                PROB_TWOBODY
 
-// Solver
-// SOR / V_CYCLE / W_CYCLE / FAS / FMG
-#define SOR_OMEGA       1.9
-#define POT_SOLVER      V_CYCLE
+
+// Potential solver
+#define BG_POTENTIAL            10.0                            // Background potential. (Notice: Don't set it to zero!)
+#define POT_SOLVER              W_CYCLE                         // SOR / V_CYCLE / W_CYCLE / FAS / FMG
+#define SOR_OMEGA               1.9                             // SOR weight
+#define SOR_SMOOTH_STEP         10000                           // Smooth step converge lower than 10000 for N=200
+#define SOR_EXACT_STEP          100000                          // Exact step will only affect on SOR solver. 
+#define SOR_ERROR               1.e-10                          // Solver converge threadshold
+
 
 // Parallel
-#define OMP_PARALLEL
+#define OMP_PARALLEL                                            // Open the openMP parallel.
+
 
 // Particle
-#define N_PARS          10
-// NGP / CIC / TSC
-#define MASS_TO_CELL    TSC
+#define N_PARS                  2                               // Number of particle
+#define MASS_TO_CELL            TSC                             // NGP / CIC / TSC
+
+
+// Time evolve method
+#define EVOLVE                  DKD                             // EULER / KDK / DKD / RK4
+
+
+// Output
+#define OUT_DT                  0.1                             // Output data time increment.
