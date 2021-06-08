@@ -8,8 +8,8 @@
 
 bool Init_matrix( matrix &mat, particle *pars );
 
-void Init_SinWave( matrix &mat, particle *pars );
+bool Init_SinWave( matrix &mat, particle *pars );
 
-void Init_Particle( matrix &mat, particle * pars );
+bool Init_TwoBody( matrix &mat, particle * pars );
 
 #endif // #ifndef INITIALIZE_H
