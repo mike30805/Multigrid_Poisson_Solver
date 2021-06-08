@@ -16,7 +16,6 @@
 void Output_matrix( matrix mat, const char filename[] )
 {
     const int N = mat.get_dim();
-    
 
     FILE *file_mat;
     file_mat = fopen( filename, "a" );
@@ -31,6 +30,8 @@ void Output_matrix( matrix mat, const char filename[] )
     fclose( file_mat );
 
 } // FUNCTION : Output_matrix
+
+
 
 //--------------------------------------------------------------------------------
 // function    : Output_particles
@@ -74,3 +75,81 @@ void Output_particles( particle *pars, const char filename[] )
     delete[] vel;
 
 } // FUNCTION : Output_particles
+
+
+
+//--------------------------------------------------------------------------------
+// function    : Output_parameters
+// description : 
+// note        :
+// input       : 
+// output      : 
+//--------------------------------------------------------------------------------
+void Output_parameter()
+{
+    FILE *file_mat;
+    file_mat = fopen( "Simulation_Parameters.txt", "a" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Simulation box\n");
+    fprintf( file_mat, "N_DIMS            %-7d\n",   N_DIMS );
+    fprintf( file_mat, "BOX_N             %-7d\n",   BOX_N );
+    fprintf( file_mat, "BOX_L             %-7.5f\n", BOX_L );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Simulation time\n");
+    fprintf( file_mat, "END_TIME          %-7.5f\n", END_TIME );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Problem number\n");
+    fprintf( file_mat, "PROB_NUM          %-3d\n",   PROB_NUM );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Potential solver\n");
+    fprintf( file_mat, "BG_POTENTIAL      %-7.5f\n", BG_POTENTIAL );
+    fprintf( file_mat, "POT_SOLVER        %-3d\n",   POT_SOLVER );
+    fprintf( file_mat, "SOR_OMEGA         %-7.5f\n", SOR_OMEGA );
+    fprintf( file_mat, "SOR_SMOOTH_STEP   %-7d\n",   SOR_SMOOTH_STEP );
+    fprintf( file_mat, "SOR_EXACT_STEP    %-7d\n",   SOR_EXACT_STEP );
+    fprintf( file_mat, "SOR_ERROR         %-1.7e\n", SOR_ERROR );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Parallel\n");
+    #ifdef OMP_PARALLEL
+    fprintf( file_mat, "OMP_PARALLEL      true\n");
+    #else
+    fprintf( file_mat, "OMP_PARALLEL      false\n");
+    #endif
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Particle\n");
+    fprintf( file_mat, "N_PARS            %-7d\n",   N_PARS );
+    fprintf( file_mat, "MASS_TO_CELL      %-2d\n",   MASS_TO_CELL );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Time evolution\n");
+    fprintf( file_mat, "EVOLVE            %-2d\n",   EVOLVE );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "Output\n");
+    fprintf( file_mat, "OUT_DT            %-7.5f\n", OUT_DT );
+    fprintf( file_mat, "==========================================\n" );
+    fprintf( file_mat, "\n\n" );
+    
+    fclose( file_mat );
+
+} // FUNCTION : Output_parameter
