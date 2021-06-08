@@ -8,7 +8,7 @@
 
 // problem number
 #define PROB_SINWAVE    1
-#define PROB_PARTICLE   2
+#define PROB_TWOBODY    2
 
 
 // solver type
@@ -23,3 +23,11 @@
 #define NGP             1                       // Nearest-Grid-Point
 #define CIC             2                       // Cloud-in-Cell
 #define TSC             3                       // Triangular-Shape-Cloud
+
+
+// particle moving scheme
+#define EULER           1
+#define KDK             2
+#define DKD             3
+#define RK4             4
+
