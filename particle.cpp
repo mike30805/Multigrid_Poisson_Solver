@@ -65,8 +65,6 @@ void particle::Par_AddMassToCell( matrix &source )
     //            -------------------------------------
     // grid space    |     |     |     |     |     |
 
-    const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
-    
     // 1. get particle position left cell index in the grid
     int pos_idx[N_DIMS];
     double dist_to_left[N_DIMS];
@@ -176,6 +174,146 @@ void particle::Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const 
     source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]+1, R_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
 
 } // FUNCTION : Par_AddMassToCell_CIC
+
+
+
+void particle::Par_SumAcc( double *acc, double ***force )
+{
+    // 0. check if the particle is in the box or not.
+    if ( not this->Par_InBox() )    return;
+    
+    // grid idx   0  |  1  |  2  |  3  |  4  |  5  |
+    //            -------------------------------------
+    // cell       | L R | L R | L R |     |     |     |
+    //            -------------------------------------
+    // grid space    |     |     |     |     |     |
+
+    // 1. get particle position left cell index in the grid
+    int pos_idx[N_DIMS];
+    double dist_to_left[N_DIMS];
+
+    // There is a bug! 1.0/BOX_DX will give wrong result. 
+    // printf("_BOX_DX = %.5f", 1.0/BOX_DX);
+    const double dx = BOX_DX;
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        pos_idx[d]      = this->par_pos[d] / dx;
+        dist_to_left[d] = this->par_pos[d] / dx - pos_idx[d]; // in unit of BOX_DX
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    // 2. Sum particle acceleration
+    #if ( MASS_TO_CELL == NGP )
+    this->Par_SumAcc_NGP( acc, force, pos_idx, dist_to_left );
+    #elif ( MASS_TO_CELL == CIC )
+    this->Par_SumAcc_CIC( acc, force, pos_idx, dist_to_left );
+    #elif ( MASS_TO_CELL == TSC )
+    this->Par_SumAcc_TSC( acc, force, pos_idx, dist_to_left );
+    #endif
+
+} // FUNCTION : particle::Par_SumAcc
+
+
+
+void particle::Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
+{
+    double acc_temp[N_DIMS];
+    int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
+    
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( dist_to_left[d] < 0.5 ) // particle in the left half cell
+        {
+            cell_shift[d] = 0;
+        } else 
+        {
+            cell_shift[d] = 1;
+        }
+
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    // sum the acceleration
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        acc_temp[d] = force[d][ pos_idx[0]+cell_shift[0] ][ pos_idx[1]+cell_shift[1] ];
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    for ( int d = 0; d < N_DIMS; d++ )    acc[d] = acc_temp[d];
+
+} // FUNCTION : particle::Par_SumAcc_NGP
+
+
+
+void particle::Par_SumAcc_CIC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
+{
+    double acc_temp[N_DIMS];
+    double L_frac[N_DIMS];      // mass fraction of left cell center
+    for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
+
+    // sum the acceleration
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        acc_temp[d]  =     L_frac[0]  *     L_frac[1]  * force[d][ pos_idx[0]   ][ pos_idx[1]   ];
+        acc_temp[d] +=     L_frac[0]  * (1.-L_frac[1]) * force[d][ pos_idx[0]   ][ pos_idx[1]+1 ];
+        acc_temp[d] += (1.-L_frac[0]) *     L_frac[1]  * force[d][ pos_idx[0]+1 ][ pos_idx[1]   ];
+        acc_temp[d] += (1.-L_frac[0]) * (1.-L_frac[1]) * force[d][ pos_idx[0]+1 ][ pos_idx[1]+1 ];
+    } // for ( int d = 0; d < N_DIMS; d++ )
+
+    for ( int d = 0; d < N_DIMS; d++ )    acc[d] = acc_temp[d];
+
+} // FUNCTION : particle::Par_SumAcc_CIC
+
+
+
+void particle::Par_SumAcc_TSC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
+{
+    // This is the temporary way to solve the edge case.
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( pos_idx[d] == 0 || pos_idx[d] == BOX_N-1 )
+        {
+            this->Par_SumAcc_CIC( acc, force, pos_idx, dist_to_left );
+            return;
+        }
+    }
+
+    double acc_temp[N_DIMS];
+    int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
+    // mass fraction of left, middle, right cell center
+    double L_frac[N_DIMS], M_frac[N_DIMS], R_frac[N_DIMS];
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        if ( dist_to_left[d] < 0.5 ) // particle in the left half cell
+        {
+            cell_shift[d] = 0;
+            L_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+            M_frac[d] = 0.75 -       dist_to_left[d]   *       dist_to_left[d];
+            R_frac[d] = 0.5  * ( 0.5+dist_to_left[d] ) * ( 0.5+dist_to_left[d] );
+        } else 
+        {
+            cell_shift[d] = 1;
+            L_frac[d] = 0.5  * ( 1.5-dist_to_left[d] ) * ( 1.5-dist_to_left[d] );
+            M_frac[d] = 0.75 - ( 1.0-dist_to_left[d] ) * ( 1.0-dist_to_left[d] );
+            R_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+        }
+
+    } // for ( int d = 0; d < N_DIMS; d++ )
+    // sum the acceleration
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        acc_temp[d]  = L_frac[0] * L_frac[1] * force[d][ pos_idx[0]+cell_shift[0]-1 ][ pos_idx[1]+cell_shift[1]-1 ];
+        acc_temp[d] += L_frac[0] * M_frac[1] * force[d][ pos_idx[0]+cell_shift[0]-1 ][ pos_idx[1]+cell_shift[1]   ];
+        acc_temp[d] += L_frac[0] * R_frac[1] * force[d][ pos_idx[0]+cell_shift[0]-1 ][ pos_idx[1]+cell_shift[1]+1 ];
+        acc_temp[d] += M_frac[0] * L_frac[1] * force[d][ pos_idx[0]+cell_shift[0]   ][ pos_idx[1]+cell_shift[1]-1 ];
+        acc_temp[d] += M_frac[0] * M_frac[1] * force[d][ pos_idx[0]+cell_shift[0]   ][ pos_idx[1]+cell_shift[1]   ];
+        acc_temp[d] += M_frac[0] * R_frac[1] * force[d][ pos_idx[0]+cell_shift[0]   ][ pos_idx[1]+cell_shift[1]+1 ];
+        acc_temp[d] += R_frac[0] * L_frac[1] * force[d][ pos_idx[0]+cell_shift[0]+1 ][ pos_idx[1]+cell_shift[1]-1 ];
+        acc_temp[d] += R_frac[0] * M_frac[1] * force[d][ pos_idx[0]+cell_shift[0]+1 ][ pos_idx[1]+cell_shift[1]   ];
+        acc_temp[d] += R_frac[0] * R_frac[1] * force[d][ pos_idx[0]+cell_shift[0]+1 ][ pos_idx[1]+cell_shift[1]+1 ];
+    } // for ( int d = 0; d < N_DIMS; d++ )
+    
+    for ( int d = 0; d < N_DIMS; d++ )    acc[d] = acc_temp[d];
+
+} // FUNCTION : particle::Par_SumAcc_TSC
 
 
 
