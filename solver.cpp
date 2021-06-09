@@ -311,6 +311,7 @@ matrix FMG_Method( matrix phi, matrix dens, int n_fmg)
         phi = phi_coarse.Interpolation(n);
         for(int i=0;i<n_fmg;i++){
             phi = V_Cycle( phi, dens );
+            //phi = W_Cycle( phi, dens, 1 );
         }
     }
     return phi;

@@ -9,6 +9,7 @@
 // problem number
 #define PROB_SINWAVE    1
 #define PROB_TWOBODY    2
+#define PROB_NBODY      3
 
 
 // solver type
