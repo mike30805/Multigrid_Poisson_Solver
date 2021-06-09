@@ -107,7 +107,11 @@ void particle::Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const 
     } // for ( int d = 0; d < N_DIMS; d++ )
 
     // deposit the mass to cell
-    source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1], this->par_mass * _cell_vol );
+    #if ( N_DIMS == 2 )
+    source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1],                           this->par_mass * _cell_vol );
+    #elif ( N_DIMS = 3 )
+    source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1], pos_idx[2]+cell_shift[2], this->par_mass * _cell_vol );
+    #endif
 
 } // FUNCTION : Par_AddMassToCell_NGP
 
@@ -116,14 +120,33 @@ void particle::Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const 
 void particle::Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const double *dist_to_left )
 {
     const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
-    double L_frac[N_DIMS];      // mass fraction of left cell center
-    for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
+    int cells = 1;              // Number of cells need to be deposited.
+    double frac[N_DIMS][2];     // mass fraction of cell center. [0]:left, [1]:right
+    
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        frac[d][0] = 1.0 - dist_to_left[d];
+        frac[d][1] = dist_to_left[d];
+
+        cells *= 2;
+    } // for ( int d = 0; d < N_DIMS; d++ )
+    
 
     // deposit the mass to cell
-    source.add_value( pos_idx[0],   pos_idx[1],       L_frac[0]  *     L_frac[1]  * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0],   pos_idx[1]+1,     L_frac[0]  * (1.-L_frac[1]) * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+1, pos_idx[1],   (1.-L_frac[0]) *     L_frac[1]  * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+1, pos_idx[1]+1, (1.-L_frac[0]) * (1.-L_frac[1]) * this->par_mass * _cell_vol );
+    for ( int idx = 0; idx < cells; idx++ )
+    {
+        const int di = idx%2;
+        const int dj = (idx%4) / 2;
+        const int dk = idx/4;
+
+        #if ( N_DIMS == 2 )
+        source.add_value( pos_idx[0]+di, pos_idx[1]+dj, 
+                            frac[0][di] * frac[1][dj] * this->par_mass * _cell_vol );
+        #elif ( N_DIMS == 3 )
+        source.add_value( pos_idx[0]+di, pos_idx[1]+dj, pos_idx[2]+dk,
+                            frac[0][di] * frac[1][dj] * frac[2][dk] * this->par_mass * _cell_vol );
+        #endif
+    } // for ( int idx = 0; idx < cells; idx++ )
 
 } // FUNCTION : Par_AddMassToCell_CIC
 
@@ -143,35 +166,44 @@ void particle::Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const 
 
     const double _cell_vol = 1. / pow( BOX_DX, N_DIMS );
     int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
-    // mass fraction of left, middle, right cell center
-    double L_frac[N_DIMS], M_frac[N_DIMS], R_frac[N_DIMS];
+    int cells = 1;              // Number of cells need to be deposited.
+    double frac[N_DIMS][3];     // mass fraction of cell center. [0]:left, [1]:middle, [2]:right
+    
     for ( int d = 0; d < N_DIMS; d++ )
     {
         if ( dist_to_left[d] < 0.5 ) // particle in the left half cell
         {
-            cell_shift[d] = 0;
-            L_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
-            M_frac[d] = 0.75 -       dist_to_left[d]   *       dist_to_left[d];
-            R_frac[d] = 0.5  * ( 0.5+dist_to_left[d] ) * ( 0.5+dist_to_left[d] );
+            cell_shift[d] = -1;
+            frac[d][0] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+            frac[d][1] = 0.75 -       dist_to_left[d]   *       dist_to_left[d];
+            frac[d][2] = 0.5  * ( 0.5+dist_to_left[d] ) * ( 0.5+dist_to_left[d] );
         } else 
         {
-            cell_shift[d] = 1;
-            L_frac[d] = 0.5  * ( 1.5-dist_to_left[d] ) * ( 1.5-dist_to_left[d] );
-            M_frac[d] = 0.75 - ( 1.0-dist_to_left[d] ) * ( 1.0-dist_to_left[d] );
-            R_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+            cell_shift[d] = 0;
+            frac[d][0] = 0.5  * ( 1.5-dist_to_left[d] ) * ( 1.5-dist_to_left[d] );
+            frac[d][1] = 0.75 - ( 1.0-dist_to_left[d] ) * ( 1.0-dist_to_left[d] );
+            frac[d][2] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
         }
 
-    } // for ( int d = 0; d < N_DIMS; d++ )
+        cells *= 3;
 
-    source.add_value( pos_idx[0]+cell_shift[0]-1, pos_idx[1]+cell_shift[1]-1, L_frac[0] * L_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]-1, pos_idx[1]+cell_shift[1]  , L_frac[0] * M_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]-1, pos_idx[1]+cell_shift[1]+1, L_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]  , pos_idx[1]+cell_shift[1]-1, M_frac[0] * L_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]  , pos_idx[1]+cell_shift[1]  , M_frac[0] * M_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]  , pos_idx[1]+cell_shift[1]+1, M_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]-1, R_frac[0] * L_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]  , R_frac[0] * M_frac[1] * this->par_mass * _cell_vol );
-    source.add_value( pos_idx[0]+cell_shift[0]+1, pos_idx[1]+cell_shift[1]+1, R_frac[0] * R_frac[1] * this->par_mass * _cell_vol );
+    } // for ( int d = 0; d < N_DIMS; d++ )
+    
+    // deposit the mass to cell
+    for ( int idx = 0; idx < cells; idx++ )
+    {
+        const int di = idx%3;
+        const int dj = (idx%9) / 3;
+        const int dk = idx/9;
+
+        #if ( N_DIMS == 2 )
+        source.add_value( pos_idx[0]+cell_shift[0]+di, pos_idx[1]+cell_shift[1]+dj, 
+                            frac[0][di] * frac[1][dj] * this->par_mass * _cell_vol );
+        #elif ( N_DIMS == 3 )
+        source.add_value( pos_idx[0]+cell_shift[0]+di, pos_idx[1]+cell_shift[1]+dj, pos_idx[2]_cell_shift[2]+dk, 
+                            frac[0][di] * frac[1][dj] * frac[2][dk] * this->par_mass * _cell_vol );
+        #endif
+    } // for ( int idx = 0; idx < cells; idx++ )
 
 } // FUNCTION : Par_AddMassToCell_CIC
 
@@ -234,7 +266,15 @@ void particle::Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx,
     // sum the acceleration
     for ( int d = 0; d < N_DIMS; d++ )
     {
-        acc_temp[d] = force[d][ pos_idx[0]+cell_shift[0] ][ pos_idx[1]+cell_shift[1] ];
+        const int i = pos_idx[0]+cell_shift[0];
+        const int j = pos_idx[1]+cell_shift[1];
+        
+        #if ( N_DIMS = 2 )
+        acc_temp[d] = force[d][i][j];
+        #elif ( N_DIMS = 3 )
+        const int k = pos_idx[2]+cell_shift[2];
+        acc_temp[d] = force[d][i][j][k];
+        #endif
     } // for ( int d = 0; d < N_DIMS; d++ )
 
     for ( int d = 0; d < N_DIMS; d++ )    acc[d] = acc_temp[d];
@@ -246,16 +286,38 @@ void particle::Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx,
 void particle::Par_SumAcc_CIC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
 {
     double acc_temp[N_DIMS];
-    double L_frac[N_DIMS];      // mass fraction of left cell center
-    for ( int d = 0; d < N_DIMS; d++ )    L_frac[d] = 1.0 - dist_to_left[d];
+    int cells = 1;              // Number of cells need to collect.
+    double frac[N_DIMS][2];     // mass fraction of cell center. [0]:left, [1]:right
+    
+    for ( int d = 0; d < N_DIMS; d++ )
+    {
+        frac[d][0] = 1.0 - dist_to_left[d];
+        frac[d][1] = dist_to_left[d];
+
+        cells *= 2;
+
+        acc_temp[d] = 0.0;
+    } // for ( int d = 0; d < N_DIMS; d++ )
 
     // sum the acceleration
     for ( int d = 0; d < N_DIMS; d++ )
     {
-        acc_temp[d]  =     L_frac[0]  *     L_frac[1]  * force[d][ pos_idx[0]   ][ pos_idx[1]   ];
-        acc_temp[d] +=     L_frac[0]  * (1.-L_frac[1]) * force[d][ pos_idx[0]   ][ pos_idx[1]+1 ];
-        acc_temp[d] += (1.-L_frac[0]) *     L_frac[1]  * force[d][ pos_idx[0]+1 ][ pos_idx[1]   ];
-        acc_temp[d] += (1.-L_frac[0]) * (1.-L_frac[1]) * force[d][ pos_idx[0]+1 ][ pos_idx[1]+1 ];
+        for ( int idx = 0; idx < cells; idx++ )
+        {
+            const int di = idx%2;
+            const int dj = (idx%4) / 2;
+            const int dk = idx/4;
+
+            const int i = pos_idx[0] + di;
+            const int j = pos_idx[1] + dj;
+            #if ( N_DIMS == 2 )
+            acc_temp[d] += frac[0][di] * frac[1][dj] * force[d][i][j];
+            #elif ( N_DIMS == 3 )
+            const int k = pos_idx[2] + dk;
+            acc_temp[d] += frac[0][di] * frac[1][dj] * frac[2][dk] * force[d][i][j][k];
+            #endif
+        } // for ( int idx = 0; idx < cells; idx++ )
+
     } // for ( int d = 0; d < N_DIMS; d++ )
 
     for ( int d = 0; d < N_DIMS; d++ )    acc[d] = acc_temp[d];
@@ -278,37 +340,50 @@ void particle::Par_SumAcc_TSC( double *acc, double ***force, const int *pos_idx,
 
     double acc_temp[N_DIMS];
     int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
-    // mass fraction of left, middle, right cell center
-    double L_frac[N_DIMS], M_frac[N_DIMS], R_frac[N_DIMS];
+    int cells = 1;              // Number of cells need to collect.
+    double frac[N_DIMS][3];     // mass fraction of cell center. [0]:left, [1]:middle, [2]:right
+    
     for ( int d = 0; d < N_DIMS; d++ )
     {
         if ( dist_to_left[d] < 0.5 ) // particle in the left half cell
         {
-            cell_shift[d] = 0;
-            L_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
-            M_frac[d] = 0.75 -       dist_to_left[d]   *       dist_to_left[d];
-            R_frac[d] = 0.5  * ( 0.5+dist_to_left[d] ) * ( 0.5+dist_to_left[d] );
+            cell_shift[d] = -1;
+            frac[d][0] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+            frac[d][1] = 0.75 -       dist_to_left[d]   *       dist_to_left[d];
+            frac[d][2] = 0.5  * ( 0.5+dist_to_left[d] ) * ( 0.5+dist_to_left[d] );
         } else 
         {
-            cell_shift[d] = 1;
-            L_frac[d] = 0.5  * ( 1.5-dist_to_left[d] ) * ( 1.5-dist_to_left[d] );
-            M_frac[d] = 0.75 - ( 1.0-dist_to_left[d] ) * ( 1.0-dist_to_left[d] );
-            R_frac[d] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
+            cell_shift[d] = 0;
+            frac[d][0] = 0.5  * ( 1.5-dist_to_left[d] ) * ( 1.5-dist_to_left[d] );
+            frac[d][1] = 0.75 - ( 1.0-dist_to_left[d] ) * ( 1.0-dist_to_left[d] );
+            frac[d][2] = 0.5  * ( 0.5-dist_to_left[d] ) * ( 0.5-dist_to_left[d] );
         }
+        
+        cells *= 3;
 
+        acc_temp[d] = 0.0;
     } // for ( int d = 0; d < N_DIMS; d++ )
+    
     // sum the acceleration
     for ( int d = 0; d < N_DIMS; d++ )
     {
-        acc_temp[d]  = L_frac[0] * L_frac[1] * force[d][ pos_idx[0]+cell_shift[0]-1 ][ pos_idx[1]+cell_shift[1]-1 ];
-        acc_temp[d] += L_frac[0] * M_frac[1] * force[d][ pos_idx[0]+cell_shift[0]-1 ][ pos_idx[1]+cell_shift[1]   ];
-        acc_temp[d] += L_frac[0] * R_frac[1] * force[d][ pos_idx[0]+cell_shift[0]-1 ][ pos_idx[1]+cell_shift[1]+1 ];
-        acc_temp[d] += M_frac[0] * L_frac[1] * force[d][ pos_idx[0]+cell_shift[0]   ][ pos_idx[1]+cell_shift[1]-1 ];
-        acc_temp[d] += M_frac[0] * M_frac[1] * force[d][ pos_idx[0]+cell_shift[0]   ][ pos_idx[1]+cell_shift[1]   ];
-        acc_temp[d] += M_frac[0] * R_frac[1] * force[d][ pos_idx[0]+cell_shift[0]   ][ pos_idx[1]+cell_shift[1]+1 ];
-        acc_temp[d] += R_frac[0] * L_frac[1] * force[d][ pos_idx[0]+cell_shift[0]+1 ][ pos_idx[1]+cell_shift[1]-1 ];
-        acc_temp[d] += R_frac[0] * M_frac[1] * force[d][ pos_idx[0]+cell_shift[0]+1 ][ pos_idx[1]+cell_shift[1]   ];
-        acc_temp[d] += R_frac[0] * R_frac[1] * force[d][ pos_idx[0]+cell_shift[0]+1 ][ pos_idx[1]+cell_shift[1]+1 ];
+        for ( int idx = 0; idx < cells; idx++ )
+        {
+            const int di = idx%3;
+            const int dj = (idx%9) / 3;
+            const int dk = idx/9;
+            
+            const int i = pos_idx[0] + di + cell_shift[0];
+            const int j = pos_idx[1] + dj + cell_shift[1];
+
+            #if ( N_DIMS == 2 )
+            acc_temp[d] += frac[0][di] * frac[1][dj] * force[d][i][j];
+            #elif ( N_DIMS == 3 )
+            const int k = pos_idx[2] + dk + cell_shift[2];
+        acc_temp[d] += frac[0][di] * frac[1][dj] * frac[2][dk] * force[d][i][j][k];
+        #endif
+        } // for ( int idx = 0; idx < cells; idx++ )
+
     } // for ( int d = 0; d < N_DIMS; d++ )
     
     for ( int d = 0; d < N_DIMS; d++ )    acc[d] = acc_temp[d];
