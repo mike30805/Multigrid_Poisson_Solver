@@ -69,8 +69,11 @@ void matrix::Error( const matrix &b )
 
 void matrix::SOR_smoothing( const matrix &rho, int steps )
 {
+     double err1, err2, residual;
      for ( int t = 0; t < steps; t++ )
      {
+     err1 = 0.0;
+     err2 = 0.0;
 #    ifdef OMP_PARALLEL
 #    pragma omp parallel num_threads(2) 
      {
@@ -88,6 +91,13 @@ void matrix::SOR_smoothing( const matrix &rho, int steps )
                  this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
                                                            this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
                                                            this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
+                 
+                 if ( t%1000 == 0 )
+                 {
+                     residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
+                                this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
+                     err1 += fabs( residual / this->value[i][j]);
+                 } // if ( t%1000 == 0 )
              } // for ( int j = 0; j < dim; j++ )
          } // for ( int i = 0; i < dim; i++ ) 
 
@@ -105,6 +115,13 @@ void matrix::SOR_smoothing( const matrix &rho, int steps )
                  this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
                                                            this->value[ i   ][ j+1 ] + this->value[ i   ][ j-1 ] - 
                                                            this->value[ i   ][ j   ] * 4 - h * h * rho.value[i][j]);
+                 
+                 if ( t%1000 == 0 )
+                 {
+                     residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
+                                this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
+                     err2 += fabs( residual / this->value[i][j]);
+                 } // if ( t%1000 == 0 )
              } // for ( int j = 0; j < dim; j++ )
          } // for ( int i = 0; i < dim; i++ ) 
 
@@ -112,9 +129,70 @@ void matrix::SOR_smoothing( const matrix &rho, int steps )
      } // # pragma omp parallel
 #    endif // #ifdef OMP_PARALLEL
 
+         if ( t%1000 == 0 && (err1+err2) <= SOR_ERROR )    break;
+     
      } //for ( int t = 0; t < steps; t++ )
 
 } // FUNCTION : matrix::SOR_smoothing
+
+
+
+void matrix::SOR_Exact( const matrix &rho, int steps )
+{
+     double err1, err2, residual;
+     for ( int t = 0; t < steps; t++ )
+     {
+         err1 = 0.0;
+         err2 = 0.0;
+#    ifdef OMP_PARALLEL
+#    pragma omp parallel num_threads(2) 
+     {
+         const int tid = omp_get_thread_num();
+
+#        pragma omp for collapse(2)
+#    endif // #ifdef OMP_PARALLEL
+         for ( int i = 0; i < dim; i++ ) 
+         {
+             for ( int j = 0; j < dim; j++ )
+             {
+                 if ( (i + j) % 2 != 0 )    continue;
+                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
+                 residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
+                            this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
+
+                 this->value[i][j] += SOR_OMEGA * 0.25 * residual; 
+                 
+                 if ( t%1000 == 0 )    err1 += fabs( residual / this->value[i][j]);
+             } // for ( int j = 0; j < dim; j++ )
+         } // for ( int i = 0; i < dim; i++ ) 
+
+#        ifdef OMP_PARALLEL
+#        pragma omp barrier
+#        pragma omp for collapse(2)
+#        endif // #ifdef OMP_PARALLEL
+         for ( int i = 0; i < dim; i++ ) 
+         {
+             for ( int j = 0; j < dim; j++ )
+             {
+                 if ( (i + j) % 2 != 1 )     continue;
+                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
+                 residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
+                            this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
+
+                 this->value[i][j] += SOR_OMEGA * 0.25 * residual; 
+                 
+                 if ( t%1000 == 0 )    err2 += fabs( residual / this->value[i][j]);
+             } // for ( int j = 0; j < dim; j++ )
+         } // for ( int i = 0; i < dim; i++ ) 
+
+#    ifdef OMP_PARALLEL
+     } // # pragma omp parallel
+#    endif // #ifdef OMP_PARALLEL
+         
+         if ( t%1000 == 0 && (err1+err2) <= SOR_ERROR )    break;
+     } //for ( int t = 0; t < steps; t++ )
+
+} // FUNCTION : matrix::SOR_Exact
 
 
 
@@ -251,6 +329,8 @@ matrix matrix::Residual( const matrix & rho )
 
 } // FUNCTION : matrix::Residual
 
+
+
 matrix matrix::Laplacian()
 {
     matrix lap( this->dim, this->h );
@@ -272,6 +352,7 @@ matrix matrix::Laplacian()
 } // FUNCTION : matrix::Laplacian
 
 
+
 void matrix::init_density()
 {
     for( int i = 0; i < dim; i++ )
@@ -287,17 +368,27 @@ void matrix::init_density()
 
 } //FUNCTION : matrix::init_density
 
+
+
 void matrix::init_potential()
 {
     for( int i = 0; i < dim; i++ )
     {
         for( int j = 0; j < dim; j++ )
         {
-            this->value[i][j] = background_pot;
+            this->value[i][j] = BG_POTENTIAL;
         } // for( int j = 0; j < dim; j++ )
     } // for( int i = 0; i < dim; i++ )
 
 } //FUNCTION : matrix::init_density
+
+
+
+void matrix::reset()
+{
+    for( int i = 0; i < dim; i++ )    for( int j = 0; j < dim; j++ )    this->value[i][j] = 0.0;
+    
+} // FUNCTION : matrix::reset_particle_density
 
 
 

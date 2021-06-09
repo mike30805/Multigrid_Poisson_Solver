@@ -16,7 +16,6 @@
 
 using namespace std;
 
-#define background_pot 10.
 class matrix
 { 
     int dim;
@@ -31,6 +30,7 @@ class matrix
         void Error(const matrix &b);
   
         void   SOR_smoothing(const matrix& rho,int steps);
+        void   SOR_Exact( const matrix &rho, int steps );
         double averaging(int i,int j);
         matrix Restriction();
         double insertion(int i,int j,int dim_in);
@@ -40,6 +40,8 @@ class matrix
   
         void init_density();
         void init_potential();
+
+        void reset();
   
         double get_h();
         double get_dim();

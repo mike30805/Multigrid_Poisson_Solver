@@ -30,9 +30,9 @@ bool Validate()
     {
         printf( "ERROR: Potential solver should be one of those: SOR / V_CYCLE / W_CYCLE / FAS / FMG .\n");
         return false;
-    } else if ( POT_SOLVER == SOR || POT_SOLVER == FAS )
+    } else if ( POT_SOLVER == FAS )
     {
-        printf( "ERROR: Potential solver SOR and FAS are not support yet.\n");
+        printf( "ERROR: Potential solver FAS is not support yet.\n");
         return false;
     }
 
@@ -53,6 +53,16 @@ bool Validate()
         printf( "Notice: The edge case will be solved by the CIC method.\n" );
     }
 
+
+    if ( EVOLVE != EULER && EVOLVE != KDK && EVOLVE != DKD && EVOLVE != RK4 )
+    {
+        printf( "ERROR: Time evolve method should be one of those: EULER / KDK / DKD / RK4 .\n");
+        return false;
+    } else if ( EVOLVE == KDK || EVOLVE == RK4 )
+    {
+        printf( "ERROR: Time evolve method KDK and RK4 are not support yet.\n");
+        return false;
+    }
 
     return true;
 

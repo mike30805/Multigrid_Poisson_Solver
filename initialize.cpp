@@ -15,16 +15,16 @@
 //--------------------------------------------------------------------------------
 bool Init_matrix( matrix &mat, particle *pars )
 {
+    bool init_stat = false;
     #if ( PROB_NUM == PROB_SINWAVE )
-    Init_SinWave( mat, pars );
-    #elif ( PROB_NUM == PROB_PARTICLE )
-    Init_Particle( mat, pars );
+    init_stat = Init_SinWave( mat, pars );
+    #elif ( PROB_NUM == PROB_TWOBODY )
+    init_stat = Init_TwoBody( mat, pars );
     #else
     printf("No such a problem number %d.\n", PROB_NUM);
-    return false;
     #endif
 
-    return true;
+    return init_stat;
 
 } // FUNCTION : Init_matrix( matrix &mat )
 
@@ -35,9 +35,9 @@ bool Init_matrix( matrix &mat, particle *pars )
 // Description : Matrix value set as f(x, y) = -2 * sin(x) * sin(y) 
 // Note        :
 // Input       : mat : matrix
-// Output      : 
+// Output      : if the initializaion is done or not.
 //--------------------------------------------------------------------------------
-void Init_SinWave( matrix &mat, particle *pars )
+bool Init_SinWave( matrix &mat, particle *pars )
 {
     for( int i = 0; i < BOX_N; i++ )
     {
@@ -49,20 +49,33 @@ void Init_SinWave( matrix &mat, particle *pars )
             mat.set_value( i, j, -2.*sin(x)*sin(y) );
         } // for( int j = 0; j < dim; j++ )
     } // for( int i = 0; i < dim; i++ )
-
+    
+    return true;
 } // FUNCTION : Init_SinWave
 
 
 
 //--------------------------------------------------------------------------------
-// Function    : Init_Particle
+// Function    : Init_TwoBody
 // Description : Problem number 2
 // Note        :
 // Input       : mat : matrix
-// Output      : 
+// Output      : if the initializaion is done or not.
 //--------------------------------------------------------------------------------
-void Init_Particle( matrix &mat, particle *pars )
+bool Init_TwoBody( matrix &mat, particle *pars )
 {
+    if ( N_PARS != 2 )
+    {
+        printf("Number of particles need to be 2 in this simulation problem.\n");
+        return false;
+    }
+    
+    if ( N_DIMS != 2 )
+    {
+        printf("Number of dimensions need to be 2 in this simulation problem.\n");
+        return false;
+    }
+
     for( int i = 0; i < BOX_N; i++ )
     {
         for( int j = 0; j < BOX_N; j++ )
@@ -72,17 +85,26 @@ void Init_Particle( matrix &mat, particle *pars )
     } // for( int i = 0; i < dim; i++ )
 
     // particles
+
     double *pos = new double[N_DIMS];
     double *vel = new double[N_DIMS];
     for ( int p = 0; p < N_PARS; p++ )
     {
-        for( int d = 0; d < N_DIMS; d++ )
+        if (p == 0)
         {
-            pos[d] = p * PI / N_PARS+0.03;
-            vel[d] = 0.0;
+            pos[0] = BOX_L/2.0 + 1.0;
+            pos[1] = BOX_L/2.0;
+            vel[0] = 0.0;
+            vel[1] = 0.5;
+        } else
+        {
+            pos[0] = BOX_L/2.0 - 1.0;
+            pos[1] = BOX_L/2.0;
+            vel[0] = 0.0;
+            vel[1] = -0.5;
         }
 
-        pars[p].Par_SetMass( 10.0 );
+        pars[p].Par_SetMass( 1.0 );
         pars[p].Par_SetPos( pos );
         pars[p].Par_SetVel( vel );
         pars[p].Par_AddMassToCell( mat );
@@ -92,8 +114,8 @@ void Init_Particle( matrix &mat, particle *pars )
     delete[] pos;
     delete[] vel;
 
-
-} /// FUNCTION : Init_Particle
+    return true;
+} /// FUNCTION : Init_TwoBody
 
 
 
