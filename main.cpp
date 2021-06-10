@@ -14,7 +14,7 @@ double f( const double x, const double y )
 } // FUNCTION : f
 
 
-
+/*
 void solved( matrix &m )
 {
     const int dim = m.get_dim();
@@ -33,7 +33,7 @@ void solved( matrix &m )
     } // for ( int idx = 0; idx < dim_2; idx++ )
 
 } // FUNCTION : solved
-
+*/
 
 
 int main()

@@ -19,8 +19,10 @@ using namespace std;
 class matrix
 { 
     int dim;
-    double **value;
+    int cells;
+    double *value;
     double h;
+    int did_x[3];
   
     public:
         matrix(int n,double hi);
@@ -31,10 +33,10 @@ class matrix
   
         void   SOR_smoothing(const matrix& rho,int steps);
         void   SOR_Exact( const matrix &rho, int steps );
-        double averaging(int i,int j);
+        double averaging(int idx);
         matrix Restriction();
-        double insertion(int i,int j,int dim_in);
-        matrix Interpolation(int);
+        double insertion(int idx,int dim_in);
+        matrix Interpolation(int idx);
         matrix Residual(const matrix& rho);
         matrix Laplacian();
   
@@ -45,10 +47,10 @@ class matrix
   
         double get_h();
         double get_dim();
-        double get_value( int i, int j );
-        void   set_value( int i, int j, double val );
-        void   add_value( int i, int j, double val );
-        void   input_answer(int i,int j,double ans);
+        double get_value( int idx );
+        void   set_value( int idx, double val );
+        void   add_value( int idx, double val );
+        void   input_answer(int idx,double ans);
 
         matrix operator+(const matrix&);
         matrix operator-(const matrix&);

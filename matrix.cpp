@@ -3,16 +3,22 @@
 matrix::matrix( int n, double hi )
 {
     dim = n;
-    value = new double*[n];    
     h = hi;
-    for ( int i = 0; i < n; i++ )
-    {
-        value[i] = new double[n];
-        for ( int j = 0; j < n; j++ )
-        {
-            value[i][j] = 0;
-        }
-    } // for ( int i = 0; i < n; i++ )
+    #if ( N_DIMS == 2 )
+    cells = n*n;
+    value = new double[n*n];
+    #elif ( N_DIMS == 3)
+    cells = n*n*n;
+    value = new double[n*n*n];
+    #endif
+
+    // cell index increments
+    did_x[0] = 1;       // i
+    did_x[1] = dim;     // j
+    did_x[2] = dim*dim; // k
+
+
+    for ( int idx = 0; idx < cells; idx++ )    value[idx] = 0.0;
 
 } // CONSTRUCTER : matrix::matrix( int n, double hi )
 
@@ -34,14 +40,19 @@ double absolute( double x )
 
 void matrix::display()
 {
-    for( int i = 0; i < dim; i++ )
+    for ( int idx = 0; idx < cells; idx++ )
     {
-        for( int j = 0; j < dim; j++ )
-        {
-            cout << value[i][j] << " ";
-        }
-        cout << endl;
-    }
+        const int i = idx%dim;
+        const int j = ( idx%(dim*dim) ) / dim;
+        const int k = idx/(dim*dim);
+
+        cout << value[idx] << " ";
+
+        if ( k == dim-1 )    cout << endl;
+        if ( j == dim-1 )    cout << endl;
+
+    } // for ( int idx = 0; idx < cells; idx++ )
+
 } // FUNCTION : matrix::display()
 
 
@@ -51,15 +62,12 @@ void matrix::Error( const matrix &b )
     double sum = 0;
     double ave = 0;
     
-    for( int i = 0; i < dim; i++ )
+    for ( int idx = 0; idx < cells; idx++ )
     {
-        for( int j = 0; j < dim; j++ )
-        {
-            sum += absolute(this->value[i][j]-b.value[i][j]);
-            ave += absolute(b.value[i][j]);
-        }
-        
-    } // for( int i = 0; i < dim; i++ )
+        sum += absolute( this->value[idx] - b.value[idx] );
+        ave += absolute( b.value[idx] );
+
+    } // for ( int idx = 0; idx < cells; idx++ )
 
     cout << sum/ave << endl;
 
@@ -69,61 +77,107 @@ void matrix::Error( const matrix &b )
 
 void matrix::SOR_smoothing( const matrix &rho, int steps )
 {
-     double err1, err2, residual;
-     for ( int t = 0; t < steps; t++ )
-     {
-     err1 = 0.0;
-     err2 = 0.0;
-#    ifdef OMP_PARALLEL
-#    pragma omp parallel num_threads(2) 
-     {
-         const int tid = omp_get_thread_num();
+    double err1, err2, residual;
+    #if ( N_DIMS == 2 )
+    const double frac = 0.25;
+    #elif ( N_DIMS == 3 )
+    const double frac = 1.0/6.0;
+    #endif
+    
+    for ( int t = 0; t < steps; t++ )
+    {
+    err1 = 0.0;
+    err2 = 0.0;
+#   ifdef OMP_PARALLEL
+#   pragma omp parallel num_threads(2) 
+    {
+        const int tid = omp_get_thread_num();
 
-#        pragma omp for collapse(2)
-#    endif // #ifdef OMP_PARALLEL
-         for ( int i = 0; i < dim; i++ ) 
-         {
-             for ( int j = 0; j < dim; j++ )
+#       pragma omp for
+#   endif // #ifdef OMP_PARALLEL
+        for ( int idx = 0; idx < cells; idx++ )
+        {
+             if ( idx % 2 != 0 )    continue;
+             
+             const int i = idx%dim;
+             const int j = ( idx%(dim*dim) ) / dim;
+             const int k = idx/(dim*dim);
+             
+             #if ( N_DIMS == 2 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+             
+             this->value[idx] += SOR_OMEGA * frac * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                                                      this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                                                      this->value[ idx ] * 4      - h * h * rho.value[ idx ] );
+             #elif ( N_DIMS == 3 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+             this->value[idx] += SOR_OMEGA * frac * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                                                      this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
+                                                      this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
+                                                      this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] );
+             #endif
+             
+             if ( t%1000 == 0 )
              {
-                 if ( (i + j) % 2 != 0 )    continue;
-                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
+                 #if ( N_DIMS == 2 )
+                 residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                            this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                            this->value[ idx ] * 4      - h * h * rho.value[ idx ] ;
+                 #elif ( N_DIMS == 3 )
+                 residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                            this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
+                            this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
+                            this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] ;
+                 #endif
 
-                 this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j  ] + this->value[ i-1 ][ j   ] + 
-                                                           this->value[ i   ][ j+1] + this->value[ i   ][ j-1 ] - 
-                                                           this->value[ i   ][ j  ] * 4 - h * h * rho.value[i][j]);
-                 
-                 if ( t%1000 == 0 )
-                 {
-                     residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
-                                this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
-                     err1 += fabs( residual / this->value[i][j]);
-                 } // if ( t%1000 == 0 )
-             } // for ( int j = 0; j < dim; j++ )
-         } // for ( int i = 0; i < dim; i++ ) 
+                 err1 += fabs( residual / this->value[idx] );
+             } // if ( t%1000 == 0 )
 
-#        ifdef OMP_PARALLEL
-#        pragma omp barrier
-#        pragma omp for collapse(2)
-#        endif // #ifdef OMP_PARALLEL
-         for ( int i = 0; i < dim; i++ )
-         {
-             for ( int j = 0; j < dim; j++ )
+        } // for ( int idx = 0; idx < cells; idx++ )
+
+#       ifdef OMP_PARALLEL
+#       pragma omp barrier
+#       pragma omp for
+#       endif // #ifdef OMP_PARALLEL
+        for ( int idx = 0; idx < cells; idx++ )
+        {
+             if ( idx % 2 != 1 )    continue;
+             
+             const int i = idx%dim;
+             const int j = ( idx%(dim*dim) ) / dim;
+             const int k = idx/(dim*dim);
+             
+             #if ( N_DIMS == 2 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+             
+             this->value[idx] += SOR_OMEGA * frac * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                                                      this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                                                      this->value[ idx ] * 4      - h * h * rho.value[ idx ] );
+             #elif ( N_DIMS == 3 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+             this->value[idx] += SOR_OMEGA * frac * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                                                      this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
+                                                      this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
+                                                      this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] );
+             #endif
+             
+             if ( t%1000 == 0 )
              {
-                 if ( (i + j) % 2 != 1 )     continue;
-                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
-                
-                 this->value[i][j] += SOR_OMEGA * 0.25 * ( this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j   ] + 
-                                                           this->value[ i   ][ j+1 ] + this->value[ i   ][ j-1 ] - 
-                                                           this->value[ i   ][ j   ] * 4 - h * h * rho.value[i][j]);
-                 
-                 if ( t%1000 == 0 )
-                 {
-                     residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
-                                this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
-                     err2 += fabs( residual / this->value[i][j]);
-                 } // if ( t%1000 == 0 )
-             } // for ( int j = 0; j < dim; j++ )
-         } // for ( int i = 0; i < dim; i++ ) 
+                 #if ( N_DIMS == 2 )
+                 residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                            this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                            this->value[ idx ] * 4      - h * h * rho.value[ idx ] ;
+                 #elif ( N_DIMS == 3 )
+                 residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                            this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
+                            this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
+                            this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] ;
+                 #endif
+
+                 err2 += fabs( residual / this->value[idx] );
+             } // if ( t%1000 == 0 )
+
+        } // for ( int idx = 0; idx < cells; idx++ )
 
 #    ifdef OMP_PARALLEL
      } // # pragma omp parallel
@@ -139,51 +193,84 @@ void matrix::SOR_smoothing( const matrix &rho, int steps )
 
 void matrix::SOR_Exact( const matrix &rho, int steps )
 {
-     double err1, err2, residual;
-     for ( int t = 0; t < steps; t++ )
-     {
-         err1 = 0.0;
-         err2 = 0.0;
-#    ifdef OMP_PARALLEL
-#    pragma omp parallel num_threads(2) 
-     {
-         const int tid = omp_get_thread_num();
+    double err1, err2, residual;
+    #if ( N_DIMS == 2 )
+    const double frac = 0.25;
+    #elif ( N_DIMS == 3 )
+    const double frac = 1.0/6.0;
+    #endif
+    for ( int t = 0; t < steps; t++ )
+    {
+        err1 = 0.0;
+        err2 = 0.0;
+#   ifdef OMP_PARALLEL
+#   pragma omp parallel num_threads(2) 
+    {
+        const int tid = omp_get_thread_num();
 
-#        pragma omp for collapse(2)
-#    endif // #ifdef OMP_PARALLEL
-         for ( int i = 0; i < dim; i++ ) 
-         {
-             for ( int j = 0; j < dim; j++ )
-             {
-                 if ( (i + j) % 2 != 0 )    continue;
-                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
-                 residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
-                            this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
+#       pragma omp for
+#   endif // #ifdef OMP_PARALLEL
+        for ( int idx = 0; idx < cells; idx++ )
+        {
+             if ( idx % 2 != 0 )    continue;
+             
+             const int i = idx%dim;
+             const int j = ( idx%(dim*dim) ) / dim;
+             const int k = idx/(dim*dim);
+             
+             #if ( N_DIMS == 2 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+             
+             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                        this->value[ idx ] * 4      - h * h * rho.value[ idx ] ;
+             
+             #elif ( N_DIMS == 3 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
+                        this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
+                        this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] ;
+             #endif
+             
+             this->value[idx] += SOR_OMEGA * frac * residual; 
+             
+             if ( t%1000 == 0 )    err1 += fabs( residual / this->value[idx] );
 
-                 this->value[i][j] += SOR_OMEGA * 0.25 * residual; 
-                 
-                 if ( t%1000 == 0 )    err1 += fabs( residual / this->value[i][j]);
-             } // for ( int j = 0; j < dim; j++ )
-         } // for ( int i = 0; i < dim; i++ ) 
+        } // for ( int idx = 0; idx < cells; idx++ )
 
 #        ifdef OMP_PARALLEL
 #        pragma omp barrier
-#        pragma omp for collapse(2)
+#        pragma omp for
 #        endif // #ifdef OMP_PARALLEL
-         for ( int i = 0; i < dim; i++ ) 
-         {
-             for ( int j = 0; j < dim; j++ )
-             {
-                 if ( (i + j) % 2 != 1 )     continue;
-                 if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue; // if ( i != 0 && i != dim - 1 && j != 0 && j != dim - 1 )
-                 residual = this->value[ i+1 ][ j   ] + this->value[ i-1 ][ j ] + this->value[ i ][ j+1 ] + 
-                            this->value[ i   ][ j-1 ] - this->value[ i   ][ j ] * 4 - h * h * rho.value[i][j];
+        for ( int idx = 0; idx < cells; idx++ )
+        {
+             if ( idx % 2 != 1 )    continue;
+             
+             const int i = idx%dim;
+             const int j = ( idx%(dim*dim) ) / dim;
+             const int k = idx/(dim*dim);
+             
+             #if ( N_DIMS == 2 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+             
+             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                        this->value[ idx ] * 4      - h * h * rho.value[ idx ] ;
+             
+             #elif ( N_DIMS == 3 )
+             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
+                        this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
+                        this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] ;
+             #endif
+             
+             this->value[idx] += SOR_OMEGA * frac * residual; 
+             
+             if ( t%1000 == 0 )    err2 += fabs( residual / this->value[idx] );
 
-                 this->value[i][j] += SOR_OMEGA * 0.25 * residual; 
-                 
-                 if ( t%1000 == 0 )    err2 += fabs( residual / this->value[i][j]);
-             } // for ( int j = 0; j < dim; j++ )
-         } // for ( int i = 0; i < dim; i++ ) 
+        } // for ( int idx = 0; idx < cells; idx++ )
 
 #    ifdef OMP_PARALLEL
      } // # pragma omp parallel
@@ -195,41 +282,74 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
 } // FUNCTION : matrix::SOR_Exact
 
 
-
-double matrix::averaging( int i, int j )
+double matrix::averaging( int idx )
 {
+    // weight
+    // 1 2 1 | 2 4 2 | 1 2 1
+    // 2 4 2 | 4 8 4 | 2 4 2
+    // 1 2 1 | 2 4 2 | 1 2 1
+    int weight[3][3][3] = { { {1, 2, 1}, 
+                              {2, 4, 2},
+                              {1, 2, 1} }, 
+
+                            { {2, 4, 2},
+                              {4, 8, 4},
+                              {2, 4, 2} },
+
+                            { {1, 2, 1},
+                              {2, 4, 2},
+                              {1, 2, 1} } };
+
+    const int i = idx%dim;
+    const int j = ( idx%(dim*dim) ) / dim;
+    const int k = idx/(dim*dim);
+
+    if ( i == 0 )    for ( int dj = 0; dj < 3; dj++ )    for ( int dk = 0; dk < 3; dk++ )    weight[ 0][dj][dk] = 0;
+    if ( j == 0 )    for ( int di = 0; di < 3; di++ )    for ( int dk = 0; dk < 3; dk++ )    weight[di][ 0][dk] = 0;
+    if ( k == 0 )    for ( int di = 0; di < 3; di++ )    for ( int dj = 0; dj < 3; dj++ )    weight[di][dj][ 0] = 0;
+    
     if ( dim%2 == 1 )
     {
-        if      ( i == 0     && j == 0     ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j+1]) + 1*value[i+1][j+1] ) / 9.0;
-        else if ( i == 0     && j == dim-1 ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j-1]) + 1*value[i+1][j-1] ) / 9.0;
-        else if ( i == dim-1 && j == 0     ) return ( 4*value[i][j] + 2*(value[i-1][j]+value[i][j+1]) + 1*value[i-1][j+1] ) / 9.0;
-        else if ( i == dim-1 && j == dim-1 ) return ( 4*value[i][j] + 2*(value[i-1][j]+value[i][j-1]) + 1*value[i-1][j-1] ) / 9.0;
-
-        else if ( i == 0     ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j+1]+value[i][j-1]) + 1*(value[i+1][j+1]+value[i+1][j-1]) ) / 12.0;
-        else if ( i == dim-1 ) return ( 4*value[i][j] + 2*(value[i-1][j]+value[i][j+1]+value[i][j-1]) + 1*(value[i-1][j+1]+value[i-1][j-1]) ) / 12.0;
-        else if ( j == 0     ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j+1]+value[i-1][j]) + 1*(value[i+1][j+1]+value[i-1][j+1]) ) / 12.0;
-        else if ( j == dim-1 ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j-1]+value[i-1][j]) + 1*(value[i+1][j-1]+value[i-1][j-1]) ) / 12.0;
-
-        else                   return ( 4*value[i][j] + 
-                                        2*(value[i+1][j]+value[i-1][j]+value[i][j+1]+value[i][j-1]) + 
-                                        1*(value[i+1][j+1]+value[i-1][j+1]+value[i+1][j-1]+value[i-1][j-1]) ) / 16.0;
-    }
-    else // if ( dim%2 == 1 )
+        if ( i == dim-1 )    for ( int dj = 0; dj < 3; dj++ )    for ( int dk = 0; dk < 3; dk++ )    weight[ 2][dj][dk] = 0;
+        if ( j == dim-1 )    for ( int di = 0; di < 3; di++ )    for ( int dk = 0; dk < 3; dk++ )    weight[di][ 2][dk] = 0;
+        if ( k == dim-1 )    for ( int di = 0; di < 3; di++ )    for ( int dj = 0; dj < 3; dj++ )    weight[di][dj][ 2] = 0;
+    } else // if ( dim%2 == 1 )
     {
-        if      ( i == 0     && j == 0     ) return (4*value[i][j] + 2*(value[i+1][j]+value[i][j+1]) + 1*value[i+1][j+1] ) / 9.0;
-        else if ( i == 0     && j == dim-2 ) return (4*value[i][j] + 2*(value[i+1][j]+value[i][j-1]) + 1*value[i+1][j-1] ) / 9.0;
-        else if ( i == dim-2 && j == 0     ) return (4*value[i][j] + 2*(value[i-1][j]+value[i][j+1]) + 1*value[i-1][j+1] ) / 9.0;
-        else if ( i == dim-2 && j == dim-2 ) return (4*value[i][j] + 2*(value[i-1][j]+value[i][j-1]) + 1*value[i-1][j-1] ) / 9.0;
-
-        else if ( i == 0     ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j+1]+value[i][j-1]) + 1*(value[i+1][j+1]+value[i+1][j-1]) ) / 12.0;
-        else if ( i == dim-2 ) return ( 4*value[i][j] + 2*(value[i-1][j]+value[i][j+1]+value[i][j-1]) + 1*(value[i-1][j+1]+value[i-1][j-1]) ) / 12.0;
-        else if ( j == 0     ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j+1]+value[i-1][j]) + 1*(value[i+1][j+1]+value[i-1][j+1]) ) / 12.0;
-        else if ( j == dim-2 ) return ( 4*value[i][j] + 2*(value[i+1][j]+value[i][j-1]+value[i-1][j]) + 1*(value[i+1][j-1]+value[i-1][j-1]) ) / 12.0;
-
-        else                   return ( 4*value[i][j] + 
-                                        2*(value[i+1][j]+value[i-1][j]+value[i][j+1]+value[i][j-1]) + 
-                                        1*(value[i+1][j+1]+value[i-1][j+1]+value[i+1][j-1]+value[i-1][j-1]) ) / 16.0;
+        if ( i == dim-2 )    for ( int dj = 0; dj < 3; dj++ )    for ( int dk = 0; dk < 3; dk++ )   weight[ 2][dj][dk] = 0;
+        if ( j == dim-2 )    for ( int di = 0; di < 3; di++ )    for ( int dk = 0; dk < 3; dk++ )   weight[di][ 2][dk] = 0;
+        if ( k == dim-2 )    for ( int di = 0; di < 3; di++ )    for ( int dj = 0; dj < 3; dj++ )   weight[di][dj][ 2] = 0;
     } // if ( dim%2 == 1 ) ... else ...
+
+    
+    double avg = 0.0;
+    double sum_w = 0.0;
+
+    #if ( N_DIMS == 2 )
+    for ( int di = -1; di < 2; di++ )
+    {
+        for ( int dj = -1; dj < 2; dj++ )
+        {
+            if ( weight[di+1][dj+1][1] == 0 )    continue;
+            avg += weight[di+1][dj+1][1] * value[ idx + di*did_x[0] + dj*did_x[1] ]; 
+            sum_w += weight[di+1][dj+1][1];
+        }
+    }
+    #elif ( N_DIMS == 3 )
+    for ( int di = -1; di < 2; di++ )
+    {
+        for ( int dj = -1; dj < 2; dj++ )
+        {
+            for ( int dk = -1; dk < 2; dk++ )
+            {
+                if ( weight[di+1][dj+1][dk+1] == 0 )    continue;
+                avg += weight[di+1][dj+1][dk+1] * value[ idx + di*did_x[0] + dj*did_x[1] + dk*did_x[2] ]; 
+                sum_w += weight[di+1][dj+1][dk+1];
+            }
+        }
+    }
+    #endif
+
+    return avg / sum_w;
 
 } // FUNCTION : matrix::averaging
 
@@ -242,13 +362,18 @@ matrix matrix::Restriction(){
     
     matrix r2h( dim2, h/2.0 );
 
-    for( int i = 0; i < dim; i++ )
+    for ( int idx = 0; idx < cells; idx++ )
     {
-        for( int j = 0; j < dim; j++ )
-        {
-            if( i%2 == 0 && j%2 == 0 )   r2h.value[i/2][j/2] = this->averaging( i, j );
-        } // for( int j = 0; j < dim; j++ )
-    } // for( int i = 0; i < dim; i++ )
+        const int i = idx%dim;
+        const int j = ( idx%(dim*dim) ) / dim;
+        const int k = idx/(dim*dim);
+
+        if( i%2 != 0 || j%2 != 0 || k%2 != 0 )    continue;
+       
+        const int idx2 = i/2 + dim2 * j/2 + dim2 * dim2 * k/2;
+        r2h.value[idx2] = this->averaging( idx );
+
+    } // for ( int idx = 0; idx < cells; idx++ )
 
     return r2h;
 
@@ -256,35 +381,178 @@ matrix matrix::Restriction(){
 
 
 
-double matrix::insertion( int i, int j, int dim_in )
+double matrix::insertion( int idx, int dim_in )
 {
     int dim_new = dim_in;
+    const int i = idx%dim_new;
+    const int j = ( idx%(dim_new*dim_new) ) / dim_new;
+    const int k = idx/(dim_new*dim_new);
     
+    #if ( N_DIMS == 2 )
     if ( i == dim_new-1 && j == dim_new-1 )
     {
-        if     ( i%2 == 0 && j%2 == 0 ) return   value[i/2][j/2];
-        else if( i%2 == 1 && j%2 == 1 ) return ( value[(i-1)/2][(j-1)/2] );
+        if     ( i%2 == 0 && j%2 == 0 ) return   value[     i/2 + dim*    j/2 ];
+        else if( i%2 == 1 && j%2 == 1 ) return   value[ (i-1)/2 + dim*(j-1)/2 ];
     }
     else if ( i == dim_new-1 )
     {
-        if     ( i%2 == 0 && j%2 == 0 ) return   value[i/2][j/2];
-        else if( i%2 == 1 && j%2 == 0 ) return ( value[(i-1)/2][j/2] );
-        else if( i%2 == 0 && j%2 == 1 ) return ( value[i/2][(j+1)/2] + value[i/2][(j-1)/2] ) / 2.0;
-        else if( i%2 == 1 && j%2 == 1 ) return ( value[(i-1)/2][(j+1)/2] + value[(i-1)/2][(j-1)/2] ) / 2.0;
+        if     ( i%2 == 0 && j%2 == 0 ) return   value[     i/2 + dim*    j/2 ];
+        else if( i%2 == 0 && j%2 == 1 ) return ( value[     i/2 + dim*(j+1)/2 ] +
+                                                 value[     i/2 + dim*(j-1)/2 ] ) * 0.5;
+        else if( i%2 == 1 && j%2 == 0 ) return   value[ (i-1)/2 + dim*    j/2 ];
+        else if( i%2 == 1 && j%2 == 1 ) return ( value[ (i-1)/2 + dim*(j+1)/2 ] +
+                                                 value[ (i-1)/2 + dim*(j-1)/2 ] ) * 0.5;
     }
     else if ( j == dim_new-1 )
     {
-        if     ( i%2 == 0 && j%2 == 0 ) return   value[i/2][j/2];
-        else if( i%2 == 1 && j%2 == 0 ) return ( value[(i+1)/2][j/2] + value[(i-1)/2][j/2] ) / 2.0;
-        else if( i%2 == 0 && j%2 == 1 ) return ( value[i/2][(j-1)/2] );
-        else if( i%2 == 1 && j%2 == 1 ) return ( value[(i+1)/2][(j-1)/2] + value[(i-1)/2][(j-1)/2] ) / 2.0;
+        if     ( i%2 == 0 && j%2 == 0 ) return   value[     i/2 + dim*    j/2 ];
+        else if( i%2 == 1 && j%2 == 0 ) return ( value[ (i+1)/2 + dim*    j/2 ] +
+                                                 value[ (i-1)/2 + dim*    j/2 ] ) * 0.5;
+        else if( i%2 == 0 && j%2 == 1 ) return   value[     i/2 + dim*(j-1)/2 ];
+        else if( i%2 == 1 && j%2 == 1 ) return ( value[ (i+1)/2 + dim*(j-1)/2 ] +
+                                                 value[ (i-1)/2 + dim*(j-1)/2 ] ) * 0.5;
+    }
+    else
+    {
+        if     ( i%2 == 0 && j%2 == 0 ) return   value[     i/2 + dim*    j/2 ];
+        else if( i%2 == 0 && j%2 == 1 ) return ( value[     i/2 + dim*(j+1)/2 ] +
+                                                 value[     i/2 + dim*(j-1)/2 ] ) * 0.5;
+        else if( i%2 == 1 && j%2 == 0 ) return ( value[ (i+1)/2 + dim*    j/2 ] +
+                                                 value[ (i-1)/2 + dim*    j/2 ] ) * 0.5;
+        else if( i%2 == 1 && j%2 == 1 ) return ( value[ (i+1)/2 + dim*(j+1)/2 ] +
+                                                 value[ (i+1)/2 + dim*(j-1)/2 ] +
+                                                 value[ (i-1)/2 + dim*(j+1)/2 ] +
+                                                 value[ (i-1)/2 + dim*(j-1)/2 ] ) * 0.25;
     }
 
-    if      ( i%2 == 0 && j%2 == 0 ) return   value[i/2][j/2];
-    else if ( i%2 == 1 && j%2 == 0 ) return ( value[(i+1)/2][j/2] + value[(i-1)/2][j/2] ) / 2.0;
-    else if ( i%2 == 0 && j%2 == 1 ) return ( value[i/2][(j+1)/2] + value[i/2][(j-1)/2] ) / 2.0;
-    else if ( i%2 == 1 && j%2 == 1 ) return ( value[(i+1)/2][(j+1)/2] + value[(i+1)/2][(j-1)/2] + 
-                                              value[(i-1)/2][(j+1)/2] + value[(i-1)/2][(j-1)/2] ) / 4.0;
+    #elif ( N_DIMS == 3 )
+    if ( i == dim_new-1 && j == dim_new-1 && k == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return   value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ];
+    }
+    else if ( i == dim_new-1 && j == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 0 && k%2 == 1 )    return ( value[     i/2 + dim*    j/2 + dim*dim*(k+1)/2 ] + 
+                                                                 value[     i/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 0 )    return   value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] + 
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+    }
+    else if ( i == dim_new-1 && k == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 0 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 1 )    return   value[ (i-1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ];
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+    }
+    else if ( j == dim_new-1 && k == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 1 )    return   value[     i/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ];
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+    }
+    else if ( i == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 0 && k%2 == 1 )    return ( value[     i/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 0 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*    k/2 ] + 
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 1 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 0 )    return   value[ (i-1)/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 1 )    return ( value[ (i-1)/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 0 )    return ( value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+    }
+    else if ( j == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 0 && k%2 == 1 )    return ( value[     i/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 0 )    return   value[     i/2 + dim*(j-1)/2 + dim*dim*    k/2 ]; 
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 1 )    return ( value[     i/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] + 
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*(k+1)/2 ] + 
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i+1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+    }
+    else if ( k == dim_new-1 )
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 0 && k%2 == 1 )    return   value[     i/2 + dim*    j/2 + dim*dim*(k-1)/2 ];
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 0 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 1 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] + 
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*    k/2 ] + 
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*    k/2 ] + 
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.25;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] + 
+                                                                 value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+    }
+    else 
+    {
+        if      ( i%2 == 0 && j%2 == 0 && k%2 == 0 )    return   value[     i/2 + dim*    j/2 + dim*dim*    k/2 ];
+        else if ( i%2 == 0 && j%2 == 0 && k%2 == 1 )    return ( value[     i/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.5;
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 0 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 0 && j%2 == 1 && k%2 == 1 )    return ( value[     i/2 + dim*(j+1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[     i/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*    k/2 ] ) * 0.5;
+        else if ( i%2 == 1 && j%2 == 0 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i+1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*    j/2 + dim*dim*(k-1)/2 ] ) * 0.25;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 0 )    return ( value[ (i+1)/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*    k/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*    k/2 ] ) * 0.25;
+        else if ( i%2 == 1 && j%2 == 1 && k%2 == 1 )    return ( value[ (i+1)/2 + dim*(j+1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i+1)/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i+1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j+1)/2 + dim*dim*(k-1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k+1)/2 ] +
+                                                                 value[ (i-1)/2 + dim*(j-1)/2 + dim*dim*(k-1)/2 ] ) * 0.125;
+    }
+    #endif
+
 } // FUNCTION : matrix::insertion
 
 
@@ -292,16 +560,14 @@ double matrix::insertion( int i, int j, int dim_in )
 matrix matrix::Interpolation( int dim_in )
 {
     int dim_new = dim_in;
-      
-    matrix r (dim_new, h/2.0 );
-  
-    for( int i = 0; i < dim_new; i++ )
-    {
-        for( int j = 0; j < dim_new; j++ )
-        {
-            r.value[i][j] = this->insertion( i, j, dim_new );
-        } // for( int j = 0; j < dim_new; j++ )
-    } // for( int i = 0; i < dim_new; i++ )
+    #if ( N_DIMS == 2 )
+    int cells_new = dim_new * dim_new;
+    #elif ( N_DIMS == 3 )
+    int cells_new = dim_new * dim_new * dim_new;
+    #endif
+    matrix r ( dim_new, h/2.0 );
+    
+    for ( int idx = 0; idx < cells_new; idx++ )    r.value[idx] = this->insertion( idx, dim_new );
     
     return r;
 
@@ -312,18 +578,26 @@ matrix matrix::Interpolation( int dim_in )
 matrix matrix::Residual( const matrix & rho )
 {
     matrix res( this->dim, this->h );
-    for( int i = 0; i < dim; i++ )
+    for( int idx = 0; idx < cells; idx++ ) 
     {
-        for( int j = 0; j < dim; j++ )
-        {
-            if ( i != 0 && i != dim-1 && j != 0 && j != dim-1 )
-            {
-                res.value[i][j] = 0.25 * ( this->value[i+1][j  ]   + this->value[i-1][j  ] + 
-                                           this->value[i  ][j+1]   + this->value[i  ][j-1] - 
-                                           this->value[i  ][j  ]*4 - h*h*rho.value[i][j] ) / h / h;
-            }
-        } // for( int j = 0; j < dim; j++ )
-    } // for( int i = 0; i < dim; i++ )
+        const int i = idx%dim;
+        const int j = ( idx%(dim*dim) ) / dim;
+        const int k = idx/(dim*dim);
+        
+        #if ( N_DIMS == 2 )
+        if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+        res.value[idx] = 0.25 * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                                  this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
+                                  this->value[ idx ]*4 - h*h*rho.value[ idx ] ) / h / h;
+        #elif ( N_DIMS == 3 )
+        if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+        res.value[idx] = ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                           this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] + 
+                           this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] - 
+                           this->value[ idx ]*6 - h*h*h*rho.value[ idx ] ) / h / h / h / 6.;
+        #endif
+        
+    } // for( int idx = 0; idx < cells; idx++ ) 
 
     return res;
 
@@ -334,18 +608,27 @@ matrix matrix::Residual( const matrix & rho )
 matrix matrix::Laplacian()
 {
     matrix lap( this->dim, this->h );
-    for( int i = 0; i < dim; i++ )
+    
+    for( int idx = 0; idx < cells; idx++ ) 
     {
-        for( int j = 0; j < dim; j++ )
-        {
-            if ( i != 0 && i != dim-1 && j != 0 && j != dim-1 )
-            {
-                lap.value[i][j] = 0.25 * ( this->value[i+1][j  ]   + this->value[i-1][j  ] + 
-                                           this->value[i  ][j+1]   + this->value[i  ][j-1] - 
-                                           this->value[i  ][j  ]*4  ) / h / h;
-            }
-        } // for( int j = 0; j < dim; j++ )
-    } // for( int i = 0; i < dim; i++ )
+        const int i = idx%dim;
+        const int j = ( idx%(dim*dim) ) / dim;
+        const int k = idx/(dim*dim);
+        
+        #if ( N_DIMS == 2 )
+        if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+        lap.value[idx] = 0.25 * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                                  this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] - 
+                                  this->value[ idx ]*4  ) / h / h;
+        #elif ( N_DIMS == 3 )
+        if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+        lap.value[idx] = ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
+                           this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] + 
+                           this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] - 
+                           this->value[ idx ]*6  ) / h / h / 6.;
+        #endif
+        
+    } // for( int idx = 0; idx < cells; idx++ ) 
 
     return lap;
 
@@ -355,16 +638,18 @@ matrix matrix::Laplacian()
 
 void matrix::init_density()
 {
-    for( int i = 0; i < dim; i++ )
+    for( int idx = 0; idx < cells; idx++ ) 
     {
-        for( int j = 0; j < dim; j++ )
-        {
-            double x = h*i;
-            double y = h*j;
-
-            this->value[i][j] = -2.*sin(x)*sin(y);
-        } // for( int j = 0; j < dim; j++ )
-    } // for( int i = 0; i < dim; i++ )
+        const int i = idx%dim;
+        const int j = ( idx%(dim*dim) ) / dim;
+        const int k = idx/(dim*dim);
+        
+        double x = h*i;
+        double y = h*j;
+        double z = h*k;
+        
+        this->value[idx] = -2.*sin(x)*sin(y)*sin(z);
+    } // for( int idx = 0; idx < cells; idx++ ) 
 
 } //FUNCTION : matrix::init_density
 
@@ -372,21 +657,14 @@ void matrix::init_density()
 
 void matrix::init_potential()
 {
-    for( int i = 0; i < dim; i++ )
-    {
-        for( int j = 0; j < dim; j++ )
-        {
-            this->value[i][j] = BG_POTENTIAL;
-        } // for( int j = 0; j < dim; j++ )
-    } // for( int i = 0; i < dim; i++ )
-
+    for( int idx = 0; idx < cells; idx++ )    this->value[idx] = BG_POTENTIAL;
 } //FUNCTION : matrix::init_density
 
 
 
 void matrix::reset()
 {
-    for( int i = 0; i < dim; i++ )    for( int j = 0; j < dim; j++ )    this->value[i][j] = 0.0;
+    for( int idx = 0; idx < cells; idx++ )    this->value[idx] = 0.0;
     
 } // FUNCTION : matrix::reset_particle_density
 
@@ -406,30 +684,30 @@ double matrix::get_dim()
 
 
 
-double matrix::get_value( int i, int j )
+double matrix::get_value( int idx )
 {
-    return this->value[i][j];
+    return this->value[idx];
 } // FUNCTION : matrix::get_value
 
 
 
-void matrix::set_value( int i, int j, double val )
+void matrix::set_value( int idx, double val )
 {
-    this->value[i][j] = val;
+    this->value[idx] = val;
 } // FUNCTION : matrix::set_value
 
 
 
-void matrix::add_value( int i, int j, double val )
+void matrix::add_value( int idx, double val )
 {
-    this->value[i][j] += val;
+    this->value[idx] += val;
 } // FUNCTION : matrix::add_value
 
 
 
-void matrix::input_answer( int i, int j, double ans )
+void matrix::input_answer( int idx, double ans )
 {
-    this->value[i][j] = ans;
+    this->value[idx] = ans;
 } // FUNCTION : matrix::input_answer
   
 
@@ -438,13 +716,7 @@ matrix matrix::operator+( const matrix &b )
 {
     matrix tmp( dim, h );
 
-    for( int i = 0; i < dim; i++ )
-    {
-        for( int j = 0; j < dim; j++ )
-        {
-            tmp.value[i][j] = this->value[i][j] + b.value[i][j];
-        }
-    }
+    for ( int idx = 0; idx < cells; idx++ )    tmp.value[idx] = this->value[idx] + b.value[idx];
 
     return tmp;
 
@@ -456,14 +728,8 @@ matrix matrix::operator-( const matrix &b )
 {
     matrix tmp( dim, h );
 
-    for( int i = 0; i < dim; i++ )
-    {
-        for( int j = 0; j < dim; j++ )
-        {
-            tmp.value[i][j] = this->value[i][j] - b.value[i][j];
-        }
-    }
-
+    for ( int idx = 0; idx < cells; idx++ )    tmp.value[idx] = this->value[idx] - b.value[idx];
+    
     return tmp;
 
 } // FUNCTION : matrix::operator-
