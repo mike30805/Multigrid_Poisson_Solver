@@ -1,5 +1,5 @@
 OUT    = ./bin/main
-CC     = g++
+CC     = g++ -std=c++11
 INCDIR = ./include
 OBJDIR = ./object
 SRCDIR = .
