@@ -72,16 +72,9 @@ void Evolve_UpdateParticle( matrix &dens, particle *pars, const double dt )
 //--------------------------------------------------------------------------------
 void Evolve_Euler( matrix &dens, particle *pars, const double dt ) 
 {
-    double ***force;
-    force = new double **[N_DIMS];
-    for ( int d = 0; d < N_DIMS; d++ )
-    {
-        force[d] = new double *[BOX_N];
-        for ( int i = 0; i < BOX_N; i++ )
-        {
-            force[d][i] = new double[BOX_N];
-        }
-    }
+    double **force;
+    force = new double *[N_DIMS];
+    for ( int d = 0; d < N_DIMS; d++ )    force[d] = new double [N_CELLS];
 
     // 1. solve acc
     const double dx = BOX_DX;
@@ -106,14 +99,7 @@ void Evolve_Euler( matrix &dens, particle *pars, const double dt )
     delete[] vel;
     delete[] acc;
     
-    for ( int d = 0; d < N_DIMS; d++ )
-    {
-        for ( int i = 0; i < BOX_N; i++ )
-        {
-            delete[] force[d][i];
-        }
-        delete[] force[d];
-    }
+    for ( int d = 0; d < N_DIMS; d++ )    delete[] force[d];
     delete[] force;
 
 } // FUNCTION : Evolve_Euler
@@ -142,16 +128,9 @@ void Evolve_KDK( matrix &dens, particle *pars, const double dt )
 //--------------------------------------------------------------------------------
 void Evolve_DKD( matrix &dens, particle *pars, const double dt )
 {
-    double ***force;
-    force = new double **[N_DIMS];
-    for ( int d = 0; d < N_DIMS; d++ )
-    {
-        force[d] = new double *[BOX_N];
-        for ( int i = 0; i < BOX_N; i++ )
-        {
-            force[d][i] = new double[BOX_N];
-        }
-    }
+    double **force;
+    force = new double *[N_DIMS];
+    for ( int d = 0; d < N_DIMS; d++ )    force[d] = new double [N_CELLS];
     
     double *pos = new double[N_DIMS];
     double *vel = new double[N_DIMS];
@@ -200,14 +179,7 @@ void Evolve_DKD( matrix &dens, particle *pars, const double dt )
     delete[] vel;
     delete[] acc;
     
-    for ( int d = 0; d < N_DIMS; d++ )
-    {
-        for ( int i = 0; i < BOX_N; i++ )
-        {
-            delete[] force[d][i];
-        }
-        delete[] force[d];
-    }
+    for ( int d = 0; d < N_DIMS; d++ )    delete[] force[d];
     delete[] force;
 
 } // FUNCTION : Evolve_DKD

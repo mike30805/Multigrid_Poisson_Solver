@@ -38,40 +38,49 @@ matrix Solver_Potential( matrix pot, matrix dens )
 // Input       : pot  : Potential of the test problem
 // Output      : Solved force 3D array
 //--------------------------------------------------------------------------------
-void Solver_Force( matrix pot, double ***force )
+void Solver_Force( matrix pot, double **force )
 {
     const double dx = BOX_DX;
-    int di, dj;
+    int di, dj, dk;
 
+    const int did_x[3] = { 1, BOX_N, BOX_N*BOX_N };
     for ( int d = 0; d < N_DIMS; d++ )
     {
         if ( d == 0 )
         {
-            di = 1;
+            di = did_x[d];
             dj = 0;
+            dk = 0;
         } else if ( d == 1 )
         {
             di = 0;
-            dj = 1;
-        } // if ( d == 0 ) ... else if ...
-
-        for ( int i = 0; i < BOX_N; i++ )
+            dj = did_x[d];
+            dk = 0;
+        } else if ( d == 2 )
         {
-            for ( int j = 0; j < BOX_N; j++ )
-            {
-                if ( (d == 0 && i == 0) || (d == 1 && j == 0) )
-                {
-                    force[d][i][j] = -( pot.get_value(i+di, j+dj) - pot.get_value(i, j) ) / dx;
-                } else if ( (d == 0 && i == BOX_N-1) || ( d == 1 && j == BOX_N-1) )
-                {
-                    force[d][i][j] = -( pot.get_value(i, j) - pot.get_value(i-di, j-dj) ) / dx;
-                } else
-                {
-                    force[d][i][j] = -0.5 * ( pot.get_value(i+di, j+dj) - pot.get_value(i-di, j-dj) ) / dx;
-                } // if ( i == 0 || j == 0 ) ... else if ... else ...
+            di = 0;
+            dj = 0;
+            dk = did_x[d];
+        }// if ( d == 0 ) ... else if ...
 
-            } // for ( int j = 0; j < BOX_N; j++ )
-        } // for ( int i = 0; i < BOX_N; i++ )
+        for ( int idx = 0; idx < N_CELLS; idx++ )
+        {
+            const int i = idx%BOX_N;
+            const int j = (idx%(BOX_N*BOX_N)) / BOX_N;
+            const int k = idx/BOX_N;
+
+            if ( (d == 0 && i == 0) || (d == 1 && j == 0) || (d == 2 && k == 0) )
+            {
+                force[d][idx] = -( pot.get_value( idx+di+dj+dk ) - pot.get_value( idx ) ) / dx;
+            } else if ( (d == 0 && i == BOX_N-1) || ( d == 1 && j == BOX_N-1) || (d == 2 && k == BOX_N-1) )
+            {
+                force[d][idx] = -( pot.get_value( idx ) - pot.get_value( idx-di-dj-dk ) ) / dx;
+            } else
+            {
+                force[d][idx] = -0.5 * ( pot.get_value( idx+di+dj+dk ) - pot.get_value( idx-di-dj-dk ) ) / dx;
+            } // if ( i == 0 || j == 0 ) ... else if ... else ...
+            
+        } // for ( int idx = 0; idx < N_CELLS; idx++ )
 
     } // for ( int d = 0; d < N_DIMS; d++ )
 

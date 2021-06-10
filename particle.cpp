@@ -108,9 +108,11 @@ void particle::Par_AddMassToCell_NGP( matrix &source, const int *pos_idx, const 
 
     // deposit the mass to cell
     #if ( N_DIMS == 2 )
-    source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1],                           this->par_mass * _cell_vol );
-    #elif ( N_DIMS = 3 )
-    source.add_value( pos_idx[0]+cell_shift[0], pos_idx[1]+cell_shift[1], pos_idx[2]+cell_shift[2], this->par_mass * _cell_vol );
+    source.add_value( pos_idx[0]+cell_shift[0] + BOX_N*( pos_idx[1]+cell_shift[1] ), 
+                          this->par_mass * _cell_vol );
+    #elif ( N_DIMS == 3 )
+    source.add_value( pos_idx[0]+cell_shift[0] + BOX_N*( pos_idx[1]+cell_shift[1] ) + BOX_N*BOX_N*( pos_idx[2]+cell_shift[2] ), 
+                          this->par_mass * _cell_vol );
     #endif
 
 } // FUNCTION : Par_AddMassToCell_NGP
@@ -140,10 +142,10 @@ void particle::Par_AddMassToCell_CIC( matrix &source, const int *pos_idx, const 
         const int dk = idx/4;
 
         #if ( N_DIMS == 2 )
-        source.add_value( pos_idx[0]+di, pos_idx[1]+dj, 
+        source.add_value( pos_idx[0]+di + BOX_N*( pos_idx[1]+dj ), 
                             frac[0][di] * frac[1][dj] * this->par_mass * _cell_vol );
         #elif ( N_DIMS == 3 )
-        source.add_value( pos_idx[0]+di, pos_idx[1]+dj, pos_idx[2]+dk,
+        source.add_value( pos_idx[0]+di + BOX_N*( pos_idx[1]+dj ) + BOX_N*BOX_N*( pos_idx[2]+dk ),
                             frac[0][di] * frac[1][dj] * frac[2][dk] * this->par_mass * _cell_vol );
         #endif
     } // for ( int idx = 0; idx < cells; idx++ )
@@ -197,10 +199,10 @@ void particle::Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const 
         const int dk = idx/9;
 
         #if ( N_DIMS == 2 )
-        source.add_value( pos_idx[0]+cell_shift[0]+di, pos_idx[1]+cell_shift[1]+dj, 
+        source.add_value( pos_idx[0]+cell_shift[0]+di + BOX_N*( pos_idx[1]+cell_shift[1]+dj ),
                             frac[0][di] * frac[1][dj] * this->par_mass * _cell_vol );
         #elif ( N_DIMS == 3 )
-        source.add_value( pos_idx[0]+cell_shift[0]+di, pos_idx[1]+cell_shift[1]+dj, pos_idx[2]_cell_shift[2]+dk, 
+        source.add_value( pos_idx[0]+cell_shift[0]+di + BOX_N*( pos_idx[1]+cell_shift[1]+dj) + BOX_N*BOX_N*( pos_idx[2]+cell_shift[2]+dk ), 
                             frac[0][di] * frac[1][dj] * frac[2][dk] * this->par_mass * _cell_vol );
         #endif
     } // for ( int idx = 0; idx < cells; idx++ )
@@ -209,7 +211,7 @@ void particle::Par_AddMassToCell_TSC( matrix &source, const int *pos_idx, const 
 
 
 
-void particle::Par_SumAcc( double *acc, double ***force )
+void particle::Par_SumAcc( double *acc, double **force )
 {
     // 0. check if the particle is in the box or not.
     if ( not this->Par_InBox() )    return;
@@ -246,7 +248,7 @@ void particle::Par_SumAcc( double *acc, double ***force )
 
 
 
-void particle::Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
+void particle::Par_SumAcc_NGP( double *acc, double **force, const int *pos_idx, const double *dist_to_left )
 {
     double acc_temp[N_DIMS];
     int cell_shift[N_DIMS];     // shift the desposited cell when particle in the right half cell
@@ -268,12 +270,14 @@ void particle::Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx,
     {
         const int i = pos_idx[0]+cell_shift[0];
         const int j = pos_idx[1]+cell_shift[1];
+        int idx = i + BOX_N * j;
         
-        #if ( N_DIMS = 2 )
-        acc_temp[d] = force[d][i][j];
-        #elif ( N_DIMS = 3 )
+        #if ( N_DIMS == 2 )
+        acc_temp[d] = force[d][idx];
+        #elif ( N_DIMS == 3 )
         const int k = pos_idx[2]+cell_shift[2];
-        acc_temp[d] = force[d][i][j][k];
+        idx += BOX_N * BOX_N * k;
+        acc_temp[d] = force[d][idx];
         #endif
     } // for ( int d = 0; d < N_DIMS; d++ )
 
@@ -283,7 +287,7 @@ void particle::Par_SumAcc_NGP( double *acc, double ***force, const int *pos_idx,
 
 
 
-void particle::Par_SumAcc_CIC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
+void particle::Par_SumAcc_CIC( double *acc, double **force, const int *pos_idx, const double *dist_to_left )
 {
     double acc_temp[N_DIMS];
     int cells = 1;              // Number of cells need to collect.
@@ -310,11 +314,14 @@ void particle::Par_SumAcc_CIC( double *acc, double ***force, const int *pos_idx,
 
             const int i = pos_idx[0] + di;
             const int j = pos_idx[1] + dj;
+            int idx_force = i + BOX_N * j;
+
             #if ( N_DIMS == 2 )
-            acc_temp[d] += frac[0][di] * frac[1][dj] * force[d][i][j];
+            acc_temp[d] += frac[0][di] * frac[1][dj] * force[d][idx_force];
             #elif ( N_DIMS == 3 )
             const int k = pos_idx[2] + dk;
-            acc_temp[d] += frac[0][di] * frac[1][dj] * frac[2][dk] * force[d][i][j][k];
+            idx_force += BOX_N * BOX_N * k;
+            acc_temp[d] += frac[0][di] * frac[1][dj] * frac[2][dk] * force[d][idx_force];
             #endif
         } // for ( int idx = 0; idx < cells; idx++ )
 
@@ -326,7 +333,7 @@ void particle::Par_SumAcc_CIC( double *acc, double ***force, const int *pos_idx,
 
 
 
-void particle::Par_SumAcc_TSC( double *acc, double ***force, const int *pos_idx, const double *dist_to_left )
+void particle::Par_SumAcc_TSC( double *acc, double **force, const int *pos_idx, const double *dist_to_left )
 {
     // This is the temporary way to solve the edge case.
     for ( int d = 0; d < N_DIMS; d++ )
@@ -375,12 +382,14 @@ void particle::Par_SumAcc_TSC( double *acc, double ***force, const int *pos_idx,
             
             const int i = pos_idx[0] + di + cell_shift[0];
             const int j = pos_idx[1] + dj + cell_shift[1];
+            int idx_force = i + BOX_N * j;
 
             #if ( N_DIMS == 2 )
-            acc_temp[d] += frac[0][di] * frac[1][dj] * force[d][i][j];
+            acc_temp[d] += frac[0][di] * frac[1][dj] * force[d][idx_force];
             #elif ( N_DIMS == 3 )
             const int k = pos_idx[2] + dk + cell_shift[2];
-        acc_temp[d] += frac[0][di] * frac[1][dj] * frac[2][dk] * force[d][i][j][k];
+            idx_force += BOX_N * BOX_N * k;
+        acc_temp[d] += frac[0][di] * frac[1][dj] * frac[2][dk] * force[d][idx_force];
         #endif
         } // for ( int idx = 0; idx < cells; idx++ )
 

@@ -1,6 +1,6 @@
 // Simulation option 
 #define N_DIMS                  2                               // Simulation dimensions.
-#define BOX_N                   200                             // Simulation resolution.
+#define BOX_N                   200                              // Simulation resolution.
 #define BOX_L                   6.0                             // Simulation box size.
 
 

@@ -5,6 +5,12 @@
 // box
 #define BOX_DX          BOX_L / (BOX_N-1)       // NOT cell center grid
 
+#if ( N_DIMS == 2 )
+#define N_CELLS         BOX_N*BOX_N
+#elif ( N_DIMS == 3 )
+#define N_CELLS         BOX_N*BOX_N*BOX_N
+#endif
+
 
 // problem number
 #define PROB_SINWAVE    1
