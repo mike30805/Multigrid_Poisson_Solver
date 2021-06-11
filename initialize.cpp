@@ -166,7 +166,7 @@ bool Init_NBody( matrix &mat, particle *pars )
         #if ( N_DIMS == 3 )
         double r = constructor_Models.set_radius();
         double v = constructor_Models.set_vel(r)/pow(4*PI,0.5);
-        cout<<r<<endl;
+        
         //random direction
         double theta = constructor_Models.randomReal(0,PI);
         double phi   = constructor_Models.randomReal(0,2*PI);
