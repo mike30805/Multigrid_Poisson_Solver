@@ -67,7 +67,7 @@ void Solver_Force( matrix pot, double **force )
         {
             const int i = idx%BOX_N;
             const int j = (idx%(BOX_N*BOX_N)) / BOX_N;
-            const int k = idx/BOX_N;
+            const int k = idx/(BOX_N*BOX_N);
 
             if ( (d == 0 && i == 0) || (d == 1 && j == 0) || (d == 2 && k == 0) )
             {
