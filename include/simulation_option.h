@@ -1,6 +1,6 @@
 // Simulation option 
-#define N_DIMS                  2                               // Simulation dimensions.
-#define BOX_N                   200                              // Simulation resolution.
+#define N_DIMS                  3                               // Simulation dimensions.
+#define BOX_N                   25                              // Simulation resolution.
 #define BOX_L                   6.0                             // Simulation box size.
 
 
@@ -10,8 +10,8 @@
 
 // Problem number (checkout macro.h)
 //#define PROB_NUM               PROB_SINWAVE
-#define PROB_NUM                PROB_TWOBODY
-//#define PROB_NUM                PROB_NBODY
+//#define PROB_NUM                PROB_TWOBODY
+#define PROB_NUM                PROB_NBODY
 
 
 // Potential solver
@@ -28,8 +28,8 @@
 
 
 // Particle
-//#define N_PARS                  10000                               // Number of particle
-#define N_PARS                  2                               // Number of particle
+#define N_PARS                  10000                               // Number of particle
+//#define N_PARS                  2                               // Number of particle
 #define MASS_TO_CELL            TSC                             // NGP / CIC / TSC
 
 

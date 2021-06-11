@@ -7,7 +7,10 @@ SRCDIR = .
 SRCS   = $(shell find $(SRCDIR) -name "*.cpp")
 OBJS   = $(SRCS:%.cpp=$(OBJDIR)/%.o)
 
-FLAGS  = -fopenmp -Wall
+GSL_LIB = -L/home/return/gsl/lib -lgsl -lgslcblas
+GSL_CFLAGS  = -I/home/return/gsl/include
+
+FLAGS  = -fopenmp -Wall -O3
 
 all: $(OUT)
 	@echo "=========================================="
@@ -22,11 +25,11 @@ all: $(OUT)
 $(OUT): $(OBJS)
 	@echo "=========================================="
 	@echo "Linking Executable $(OUT)"
-	@$(CC) $(FLAGS) -I$(INCDIR) -o $(OUT) $(OBJS)
+	@$(CC) $(FLAGS) -I$(INCDIR) -o $(OUT) $(OBJS) $(GSL_LIB)
 
 $(OBJDIR)/%.o: %.cpp
 	@echo "Compiling source: $<"
-	@$(CC) $(FLAGS) -I$(INCDIR) -c $<  -o $@
+	@$(CC) $(FLAGS) $(GSL_CFLAGS) -I$(INCDIR) -c $<  -o $@
 
 
 .PHONY:clean

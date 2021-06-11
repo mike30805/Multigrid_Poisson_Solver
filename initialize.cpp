@@ -3,7 +3,7 @@
 
 #include "initialize.h"
 
-
+#include "Particle_IC_Constructor.h"
 
 //--------------------------------------------------------------------------------
 // Function    : Init_matrix
@@ -132,23 +132,55 @@ bool Init_NBody( matrix &mat, particle *pars )
     
     mat.reset();
 
+    // Initialize Particle IC Constructor
+    double Newton_G      =  1.0;    //Gravitational Constant
+    double Rho0          =  1.0;     // peak density [unit: M mass of sun/kpc^3]
+    double R0            =  0.1 ;                 // scale radius [unit: kpc]
+    double MaxR          =  2.0;                    // maximum radius for particles [unit: kpc]
+    int MassProfNBin   = 1000    ;             // number of radial bins in the mass profile table [1000]
+    double Alpha         =1     ;               // alpha parameter for Eiasto model [1]
+    int r_col         = 0         ;           // number of the column of the radius of density profile, when model is "UNKNOWN"  [0]
+    int rho_col        =1          ;          // number of the column of the density of density profile, when model is "UNKNOWN"  [1]
+    double truncation    = 0       ;             // whether to turn on a smoothy truncation function of density near MaxR [0]
+
+    Particle_IC_Constructor constructor_Models;
+    constructor_Models.init("Plummer",Alpha,Newton_G,Rho0,R0,MassProfNBin,MaxR,truncation,0.7,r_col,rho_col,"NONE");
+
+
     // particles
     double *pos = new double[N_DIMS];
     double *vel = new double[N_DIMS];
     double d_temp = BOX_L/100.;
+
+    //compute mass
+    double par_m =constructor_Models.set_mass( MaxR/R0 )/N_PARS;
     for ( int p = 0; p < N_PARS; p++ )
     {
+        #if ( N_DIMS == 2 )
         pos[0] = ( p/100 ) * d_temp;
         pos[1] = ( p%100 ) * d_temp;
         vel[0] = 0.0;
         vel[1] = 0.0;
-
-        #if ( N_DIMS == 3 )
-        pos[2] = BOX_L/2.0;
-        vel[2] = 0.0;
         #endif 
 
-        pars[p].Par_SetMass( 1.0 );
+        #if ( N_DIMS == 3 )
+        double r = constructor_Models.set_radius();
+        double v = constructor_Models.set_vel(r)/pow(4*PI,0.5);
+        cout<<r<<endl;
+        //random direction
+        double theta = constructor_Models.randomReal(0,PI);
+        double phi   = constructor_Models.randomReal(0,2*PI);
+
+        pos[0] = r*sin(theta)*cos(phi)+BOX_L/2.0;
+        pos[1] = r*sin(theta)*sin(phi)+BOX_L/2.0;
+        pos[2] = r*cos(theta)+BOX_L/2.0;
+
+        vel[0] = v*sin(theta)*cos(phi);
+        vel[1] = v*sin(theta)*sin(phi);
+        vel[2] = v*cos(theta);
+        #endif 
+
+        pars[p].Par_SetMass( par_m );
         pars[p].Par_SetPos( pos );
         pars[p].Par_SetVel( vel );
         pars[p].Par_AddMassToCell( mat );
