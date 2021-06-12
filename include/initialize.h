@@ -12,4 +12,6 @@ bool Init_SinWave( matrix &mat, particle *pars );
 
 bool Init_TwoBody( matrix &mat, particle * pars );
 
+bool Init_NBody( matrix &mat, particle * pars );
+
 #endif // #ifndef INITIALIZE_H

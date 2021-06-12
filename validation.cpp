@@ -4,10 +4,13 @@
 bool Validate()
 {
 
-    if ( N_DIMS != 2 )
+    if ( N_DIMS != 2 && N_DIMS != 3 )
     {
-        printf( "ERROR: Simulation only support 2 dimensions now. N_DIMS = %d\n", N_DIMS );
+        printf( "ERROR: Simulation only support 2 and 3 dimensions now. N_DIMS = %d\n", N_DIMS );
         return false;
+    } else if ( N_DIMS == 3 )
+    {
+        printf("Warning: Three dimensions has not well tested. Be carefull!!!\n");
     }
 
 
@@ -21,6 +24,13 @@ bool Validate()
     if ( BOX_N <= 0 )
     {
         printf( "ERROR: Simulation resolusion should be greater than 1. BOX_N = %d\n", BOX_N );
+        return false;
+    }
+    
+
+    if ( END_TIME < 0 )
+    {
+        printf( "ERROR: Simulation time should be greater than zero. END_TIME = %.5e\n", END_TIME );
         return false;
     }
 

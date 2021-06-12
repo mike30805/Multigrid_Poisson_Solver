@@ -6,7 +6,7 @@
 
 matrix Solver_Potential( matrix phi, matrix dens );
 
-void Solver_Force( matrix pot, double ***force );
+void Solver_Force( matrix pot, double **force );
 
 matrix SOR_Method( matrix phi, matrix dens );
 

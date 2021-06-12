@@ -15,18 +15,30 @@
 //--------------------------------------------------------------------------------
 void Output_matrix( matrix mat, const char filename[] )
 {
-    const int N = mat.get_dim();
+    int n = mat.get_dim();
+    #if ( N_DIMS == 2 )
+    int cells = n*n;
+    #elif ( N_DIMS == 3)
+    int cells = n*n*n;
+    #endif
 
     FILE *file_mat;
     file_mat = fopen( filename, "a" );
-    for ( int i = 0; i < N; i++ )
+    
+    for ( int idx = 0; idx < cells; idx++ )
     {
-        for ( int j = 0; j < N; j++ )
-        {
-            fprintf( file_mat, "%.8e ", mat.get_value( i, j ) );
-        }
-        fprintf( file_mat, "\n" );
-    }
+        const int i = idx%n;
+        const int j = ( idx%(n*n) ) / n;
+        const int k = idx/(n*n);
+
+        fprintf( file_mat, "%.8e ", mat.get_value( idx ) );
+
+        if ( i == n-1 && j == n-1 && k == n-1 )    fprintf( file_mat, "\n" );
+        if ( i == n-1 && j == n-1 )                fprintf( file_mat, "\n" );
+        if ( i == n-1 )                            fprintf( file_mat, "\n" );
+
+    } // for ( int idx = 0; idx < cells; idx++ )
+
     fclose( file_mat );
 
 } // FUNCTION : Output_matrix
@@ -63,9 +75,9 @@ void Output_particles( particle *pars, const char filename[] )
         pars[p].Par_GetPos( pos ); 
         pars[p].Par_GetVel( vel );
         
-        fprintf( file_par, "%5d %.8e ", p, mass );
-        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e ", pos[d] );
-        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e ", vel[d] );
+        fprintf( file_par, "%5d, %.8e, ", p, mass );
+        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e, ", pos[d] );
+        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e, ", vel[d] );
         fprintf( file_par, "\n" );
     }
 
