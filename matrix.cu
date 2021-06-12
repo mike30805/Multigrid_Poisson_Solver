@@ -76,17 +76,21 @@ void matrix::Error( const matrix &b )
 
 #   ifdef GPU
 __global__
-void SOR_smoothing_GPU(const bool even, const int dim, const double h, const double SOR_OMEGA, double* d_value, double* d_rho){
-    /*const int  idx = blockDim.x * blockIdx.x + threadIdx.x;
+void SOR_smoothing_GPU(const bool even, const int dim, const double h, double* d_value, double* d_rho){
+    const int  idx = blockDim.x * blockIdx.x + threadIdx.x;
     int did_x[3];
     did_x[0] = 1;       // i
     did_x[1] = dim;     // j
     did_x[2] = dim * dim; // k
+    int a;
     if (even) {
-        if (idx % 2 != 0) {
+        a = 0;
+    }
+    else a = 1;
+    if (idx % 2 != a) {
             //do nothing
-        }
-        else {
+    }
+     else {
             const int i = idx % dim;
             const int j = (idx % (dim * dim)) / dim;
             const int k = idx / (dim * dim);
@@ -117,11 +121,11 @@ void SOR_smoothing_GPU(const bool even, const int dim, const double h, const dou
                     d_value[idx + did_x[1]] + d_value[idx - did_x[1]] +
                     d_value[idx + did_x[2]] + d_value[idx - did_x[2]] -
                     d_value[idx] * 6 - h * h * h * d_rho[idx]);
-            }
+         }
             
 #endif
-        }
-    }*/
+     }
+    
 
 } // FUNCTION :  SOR_smoothing_GPU
 #endif
@@ -134,13 +138,13 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 #elif ( N_DIMS == 3 )
     const double frac = 1.0 / 6.0;
 #endif
-
+#   ifndef GPU
     for (int t = 0; t < steps; t++)
     {
         err1 = 0.0;
         err2 = 0.0;
 
-#   ifndef GPU
+
 #   ifdef OMP_PARALLEL
 #   pragma omp parallel num_threads(2) 
         {
@@ -243,37 +247,49 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 
 #   ifdef GPU
     // allocate device memory
+    
     double* d_value, * d_rho;
-    cudaMalloc(&d_value, dim * dim * sizeof(double));
-    cudaMalloc(&d_rho, dim * dim * sizeof(double));
+    cudaMalloc(&d_value, cells * sizeof(double));
+    cudaMalloc(&d_rho, cells * sizeof(double));
+    
+    cudaMemcpy(d_value, this->value, cells * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_rho, rho.value, cells * sizeof(double), cudaMemcpyHostToDevice);
 
     for (int t = 0; t < steps; t++)
     {
         err1 = 0.0;
         err2 = 0.0;
-        cudaMemcpy(d_value, this->value, dim * dim * sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_rho, rho.value, dim * dim * sizeof(double), cudaMemcpyHostToDevice);
 
-        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, SOR_OMEGA, d_value, d_rho);
-        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, SOR_OMEGA, d_value, d_rho);
 
-        cudaMemcpy(this->value, d_value, dim * dim * sizeof(double), cudaMemcpyDeviceToHost);
-        cudaMemcpy(rho.value, d_rho, dim * dim * sizeof(double), cudaMemcpyDeviceToHost);
+        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, d_value, d_rho);
+        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, d_value, d_rho);
 
         if (t % 1000 == 0)
         {
-#if ( N_DIMS == 2 )
-            residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                this->value[idx] * 4 - h * h * rho.value[idx];
-#elif ( N_DIMS == 3 )
-            residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                this->value[idx] * 6 - h * h * h * rho.value[idx];
-#endif
+            cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
+            cudaMemcpy(rho.value, d_rho, cells * sizeof(double), cudaMemcpyDeviceToHost);
 
-            err2 += fabs(residual / this->value[idx]);
+            for (int idx = 0; idx < cells; idx++)
+            {
+                const int i = idx % dim;
+                const int j = (idx % (dim * dim)) / dim;
+                const int k = idx / (dim * dim);
+
+#           if ( N_DIMS == 2 )
+                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
+                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
+                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
+                    this->value[idx] * 4 - h * h * rho.value[idx];
+#           elif ( N_DIMS == 3 )
+                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
+                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
+                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
+                    this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
+                    this->value[idx] * 6 - h * h * h * rho.value[idx];
+#endif
+                err2 += fabs(residual / this->value[idx]);
+            }//for (int idx = 0; idx < cells; idx++)
+            if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
         } // if ( t%1000 == 0 )
     }
 #   endif//ifdef GPU

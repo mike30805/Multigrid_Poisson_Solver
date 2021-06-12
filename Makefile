@@ -31,9 +31,11 @@ all: $(OUT)
 $(OUT): $(OBJS) $(OBJS_GPU)
 	@echo "=========================================="
 	@echo "Linking Executable $(OUT)"
+	@echo "Linking GPU codes"
 	@$(NVCC) -o $(OBJ_GPU_LINK) $(OBJS_GPU) -dlink
-
-	@$(CC) $(FLAGS) -I$(INCDIR) -o $(OUT) $(OBJS) $(OBJ_GPU_LINK)  $(GSL_LIB)
+	@echo "Linking CPU codes"
+	@$(NVCC) -o $@ $^ $(OBJ_GPU_LINK) $(OBJ_GPU_LINK) $(FLAGS_GPU) $(GSL_LIB)
+	#@$(NVCC) $(FLAGS_GPU) -I$(INCDIR) -o $(OUT) $(OBJS) $(OBJ_GPU_LINK)  $(GSL_LIB)
 
 $(OBJDIR)/%.o: %.cpp
 	@echo "Compiling source: $<"
