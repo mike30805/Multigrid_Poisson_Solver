@@ -87,44 +87,42 @@ void SOR_smoothing_GPU(const bool even, const int dim, const double h, double* d
         a = 0;
     }
     else a = 1;
-    if (idx % 2 != a) {
-            //do nothing
+
+
+    const int i = idx % dim;
+    const int j = (idx % (dim * dim)) / dim;
+    const int k = idx / (dim * dim);
+
+#   if ( N_DIMS == 2 )
+    const double frac = 0.25;
+#   elif ( N_DIMS == 3 )
+    const double frac = 1.0 / 6.0;
+#   endif
+
+#   if ( N_DIMS == 2 )
+    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1||(i+j)%2==a) {
+        //do nothing
     }
-     else {
-            const int i = idx % dim;
-            const int j = (idx % (dim * dim)) / dim;
-            const int k = idx / (dim * dim);
 
-#       if ( N_DIMS == 2 )
-            const double frac = 0.25;
-#       elif ( N_DIMS == 3 )
-            const double frac = 1.0 / 6.0;
-#       endif
-
-#       if ( N_DIMS == 2 )
-            if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1) {
-                //do nothing
-            }
-
-            else {
-                d_value[idx] += SOR_OMEGA * frac * (d_value[idx + did_x[0]] + d_value[idx - did_x[0]] +
-                    d_value[idx + did_x[1]] + d_value[idx - did_x[1]] -
-                    d_value[idx] * 4 - h * h * d_rho[idx]);
-            }
+    else {
+        d_value[idx] += SOR_OMEGA * frac * (d_value[idx + did_x[0]] + d_value[idx - did_x[0]] +
+        d_value[idx + did_x[1]] + d_value[idx - did_x[1]] -
+        d_value[idx] * 4 - h * h * d_rho[idx]);
+    }
             
-#       elif ( N_DIMS == 3 )
-            if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1) {
-                //do nothing
-            }
-            else {
-                d_value[idx] += SOR_OMEGA * frac * (d_value[idx + did_x[0]] + d_value[idx - did_x[0]] +
-                    d_value[idx + did_x[1]] + d_value[idx - did_x[1]] +
-                    d_value[idx + did_x[2]] + d_value[idx - did_x[2]] -
-                    d_value[idx] * 6 - h * h * h * d_rho[idx]);
-         }
+#   elif ( N_DIMS == 3 )
+    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1 || (i + j + k) % 2 == a) {
+        //do nothing
+    }
+    else {
+         d_value[idx] += SOR_OMEGA * frac * (d_value[idx + did_x[0]] + d_value[idx - did_x[0]] +
+         d_value[idx + did_x[1]] + d_value[idx - did_x[1]] +
+         d_value[idx + did_x[2]] + d_value[idx - did_x[2]] -
+         d_value[idx] * 6 - h * h * h * d_rho[idx]);
+     }
             
 #endif
-     }
+     
     
 
 } // FUNCTION :  SOR_smoothing_GPU
@@ -154,19 +152,21 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 #   endif // #ifdef OMP_PARALLEL
             for (int idx = 0; idx < cells; idx++)
             {
-                if (idx % 2 != 0)    continue;
+                
 
                 const int i = idx % dim;
                 const int j = (idx % (dim * dim)) / dim;
                 const int k = idx / (dim * dim);
 
 #if ( N_DIMS == 2 )
+                if ((i+j) % 2 != 0)    continue;
                 if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
 
                 this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
                     this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
                     this->value[idx] * 4 - h * h * rho.value[idx]);
 #elif ( N_DIMS == 3 )
+                if ((i+j+k) % 2 != 0)    continue;
                 if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
                 this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
                     this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
@@ -198,7 +198,7 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 #       endif // #ifdef OMP_PARALLEL
             for (int idx = 0; idx < cells; idx++)
             {
-                if (idx % 2 != 1)    continue;
+                
 
                 const int i = idx % dim;
                 const int j = (idx % (dim * dim)) / dim;
@@ -206,12 +206,14 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 
 #if ( N_DIMS == 2 )
                 if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
+                if ((i+j) % 2 != 1)    continue;
 
                 this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
                     this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
                     this->value[idx] * 4 - h * h * rho.value[idx]);
 #elif ( N_DIMS == 3 )
                 if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
+                if ((i+j+k) % 2 != 1)    continue;
                 this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
                     this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
                     this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
@@ -300,12 +302,14 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 
 void matrix::SOR_Exact( const matrix &rho, int steps )
 {
+
     double err1, err2, residual;
     #if ( N_DIMS == 2 )
     const double frac = 0.25;
     #elif ( N_DIMS == 3 )
     const double frac = 1.0/6.0;
-    #endif
+    #endif//if ( N_DIMS == 2 )
+#   ifndef GPU
     for ( int t = 0; t < steps; t++ )
     {
         err1 = 0.0;
@@ -319,7 +323,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
 #   endif // #ifdef OMP_PARALLEL
         for ( int idx = 0; idx < cells; idx++ )
         {
-             if ( idx % 2 != 0 )    continue;
+             
              
              const int i = idx%dim;
              const int j = ( idx%(dim*dim) ) / dim;
@@ -327,6 +331,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
              
              #if ( N_DIMS == 2 )
              if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+             if ((i+j) % 2 != 0)    continue;
              
              residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
                         this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
@@ -334,6 +339,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
              
              #elif ( N_DIMS == 3 )
              if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+             if ((i+j+k) % 2 != 0)    continue;
              residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
                         this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
                         this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
@@ -352,7 +358,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
 #        endif // #ifdef OMP_PARALLEL
         for ( int idx = 0; idx < cells; idx++ )
         {
-             if ( idx % 2 != 1 )    continue;
+             
              
              const int i = idx%dim;
              const int j = ( idx%(dim*dim) ) / dim;
@@ -360,6 +366,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
              
              #if ( N_DIMS == 2 )
              if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
+             if ((i+j) % 2 != 1)    continue;
              
              residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
                         this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
@@ -367,6 +374,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
              
              #elif ( N_DIMS == 3 )
              if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
+             if ((i+j+k) % 2 != 1)    continue;
              residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
                         this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
                         this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
@@ -385,7 +393,55 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
          
          if ( t%1000 == 0 && (err1+err2) <= SOR_ERROR )    break;
      } //for ( int t = 0; t < steps; t++ )
+#   endif //ifndef GPU
+#   ifdef GPU
+    // allocate device memory
 
+    double* d_value, * d_rho;
+    cudaMalloc(&d_value, cells * sizeof(double));
+    cudaMalloc(&d_rho, cells * sizeof(double));
+
+    cudaMemcpy(d_value, this->value, cells * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_rho, rho.value, cells * sizeof(double), cudaMemcpyHostToDevice);
+
+    for (int t = 0; t < steps; t++)
+    {
+        err1 = 0.0;
+        err2 = 0.0;
+
+
+        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, d_value, d_rho);
+        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, d_value, d_rho);
+
+        if (t % 1000 == 0)
+        {
+            cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
+            cudaMemcpy(rho.value, d_rho, cells * sizeof(double), cudaMemcpyDeviceToHost);
+
+            for (int idx = 0; idx < cells; idx++)
+            {
+                const int i = idx % dim;
+                const int j = (idx % (dim * dim)) / dim;
+                const int k = idx / (dim * dim);
+
+#           if ( N_DIMS == 2 )
+                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
+                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
+                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
+                    this->value[idx] * 4 - h * h * rho.value[idx];
+#           elif ( N_DIMS == 3 )
+                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
+                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
+                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
+                    this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
+                    this->value[idx] * 6 - h * h * h * rho.value[idx];
+#endif
+                err2 += fabs(residual / this->value[idx]);
+            }//for (int idx = 0; idx < cells; idx++)
+            if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
+        } // if ( t%1000 == 0 )
+    }
+#   endif//ifdef GPU
 } // FUNCTION : matrix::SOR_Exact
 
 

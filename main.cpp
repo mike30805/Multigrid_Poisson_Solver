@@ -15,7 +15,7 @@ double f( const double x, const double y )
 } // FUNCTION : f
 
 
-/*
+
 void solved( matrix &m )
 {
     const int dim = m.get_dim();
@@ -30,11 +30,11 @@ void solved( matrix &m )
         const double x = h*i;
         const double y = h*j;
       
-        m.input_answer( i, j, f(x, y) );
+        m.input_answer( idx, f(x, y) );
     } // for ( int idx = 0; idx < dim_2; idx++ )
 
 } // FUNCTION : solved
-*/
+
 
 void test_particle_ic_constructor(){
     double Newton_G =1.0;
@@ -74,7 +74,7 @@ void test_particle_ic_constructor(){
 int main()
 {
     //test_particle_ic_constructor();
-    /*
+    
     if ( not Validate() ) return 0;
     bool init_status;
     
@@ -96,7 +96,7 @@ int main()
     auto start = chrono::steady_clock::now();
 
     // solve potential
-    matrix solution = Solver_Potential( phi, dens );
+    matrix solution = Solver_Potential( pot, dens );
     
     auto elapsed = chrono::steady_clock::now() - start;
     auto sec_double = chrono::duration<double>(elapsed);     // double
@@ -115,7 +115,8 @@ int main()
     Output_particles( pars, particle_filename );
     
     solution.Error( ans ); // print the error
-    */
+    
+    /*
     //==============================================================
     int output_counter = 0;
     double time_now = 0.0;
@@ -185,5 +186,5 @@ int main()
     //==============================================================
 
     delete[] pars;
-
+    */
 } // FUNCTION : main 

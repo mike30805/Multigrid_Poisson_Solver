@@ -46,13 +46,18 @@ bool Init_SinWave( matrix &mat, particle *pars )
         const int i = idx%BOX_N;
         const int j = ( idx%(BOX_N*BOX_N) ) / BOX_N;
         const int k = idx/(BOX_N*BOX_N);
-        
+    #if ( N_DIMS == 2 )
+        const double x = BOX_DX * i;
+        const double y = BOX_DX * j;
+        mat.set_value(idx, -2. * sin(x) * sin(y));
+    #endif
+    #if ( N_DIMS == 3 )
         const double x = BOX_DX*i;
         const double y = BOX_DX*j;
         const double z = BOX_DX*k;
 
         mat.set_value( idx, -2.*sin(x)*sin(y)*sin(z) );
-     
+    #endif
      } // for( int idx = 0; idx < N_CELLS; idx++ ) 
     
     return true;
