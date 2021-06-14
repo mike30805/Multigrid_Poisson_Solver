@@ -93,14 +93,14 @@ int main()
     solved(ans);
     
     
-    auto start = chrono::steady_clock::now();
+    //auto start = chrono::steady_clock::now();
 
     // solve potential
     matrix solution = Solver_Potential( pot, dens );
     
-    auto elapsed = chrono::steady_clock::now() - start;
-    auto sec_double = chrono::duration<double>(elapsed);     // double
-    cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
+    //auto elapsed = chrono::steady_clock::now() - start;
+    //auto sec_double = chrono::duration<double>(elapsed);     // double
+    //cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
     
     // Output
     int output_counter = 0;

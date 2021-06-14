@@ -1,6 +1,3 @@
-// GPU
-//#define GPU
-
 // Simulation option 
 #define N_DIMS                  2                               // Simulation dimensions.
 #define BOX_N                   100                              // Simulation resolution.
@@ -27,8 +24,11 @@
 
 
 // Parallel
-//#define OMP_PARALLEL                                            // Open the openMP parallel.
-
+#define OMP_PARALLEL                                            // Open the openMP parallel, must turn off GPU
+#ifdef OMP_PARALLEL  
+#define OMP_THREAD_NUM         8 
+#endif
+//#define GPU													// Open GPU parallel, must turn off openMP.
 
 // Particle
 #define N_PARS                  10000                               // Number of particle

@@ -4,23 +4,51 @@ NVCC     = nvcc -std=c++11 #GPU
 INCDIR = ./include
 OBJDIR = ./object
 SRCDIR = .
+SIMU_OPTION =
+# simulation options
+#######################################################################################################
 
-SRCS   = $(shell find $(SRCDIR) -name "*.cpp")
+# (a) GPU acceleration
+# --> must turn off OMP
+#SIMU_OPTION += -DGPU
+
+# (b) OMP acceleration
+# --> must turn off GPU
+SIMU_OPTION += -DOMP
+
+SRCS  := $(shell find $(SRCDIR) -name "*.cpp")
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
+SRCS  := $(filter-out ./matrix.cpp, $(SRCS))
+endif
 OBJS   = $(SRCS:%.cpp=$(OBJDIR)/%.o)
 
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
 SRCS_GPU   = $(shell find $(SRCDIR) -name "*.cu")
 OBJS_GPU   = $(SRCS_GPU:%.cu=$(OBJDIR)/%.o)
 OBJ_GPU_LINK := $(OBJDIR)/gpu_link.o
+endif
 
 GSL_LIB = -L/software/gsl/default/lib -lgsl -lgslcblas
 GSL_CFLAGS  = -I/software/gsl/default/include
 
-FLAGS  = -fopenmp -Wall -O3 #CPU
-NVCC_FLAGS  =  -O3 #GPU
+
+
+ifeq "$(filter -DOMP, $(SIMU_OPTION))" "-DOMP"
+FLAGS  = -fopenmp -Wall  #CPU
+else
+FLAGS  = -Wall  #CPU
+endif
+
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
+NVCC_FLAGS  =   #GPU
+endif
 
 all: $(OUT)
 	@echo "=========================================="
 	@echo "Compiler          : $(CC)"
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
+	@echo "GPU Compiler       : $(NVCC)"
+endif
 	@echo "Using flags       : $(FLAGS)"
 	@echo "Include directory : $(INCDIR)"
 	@echo "Object directory  : $(OBJDIR)"
@@ -28,14 +56,20 @@ all: $(OUT)
 	@echo "Successfully Done!"
 
 
+
 $(OUT): $(OBJS) $(OBJS_GPU)
 	@echo "=========================================="
 	@echo "Linking Executable $(OUT)"
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
 	@echo "Linking GPU codes"
 	@$(NVCC) -o $(OBJ_GPU_LINK) $(OBJS_GPU) -dlink
+endif
 	@echo "Linking CPU codes"
-	@$(NVCC) -o $@ $^ $(OBJ_GPU_LINK) $(OBJ_GPU_LINK) $(FLAGS_GPU) $(GSL_LIB)
-	#@$(NVCC) $(FLAGS_GPU) -I$(INCDIR) -o $(OUT) $(OBJS) $(OBJ_GPU_LINK)  $(GSL_LIB)
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
+	@$(NVCC) -o $@ $^ $(OBJ_GPU_LINK) $(FLAGS_GPU) $(GSL_LIB)
+else
+	@$(CC) $(FLAGS) -I$(INCDIR) -o $(OUT) $(OBJS)  $(GSL_LIB)
+endif
 
 $(OBJDIR)/%.o: %.cpp
 	@echo "Compiling source: $<"
