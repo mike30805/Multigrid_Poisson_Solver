@@ -242,7 +242,7 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
         } // # pragma omp parallel
 #    endif // #ifdef OMP_PARALLEL
 
-        //if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
+        if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
 
     } //for ( int t = 0; t < steps; t++ )
 #   endif //ifndef GPU
