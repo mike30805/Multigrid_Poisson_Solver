@@ -49,8 +49,8 @@ void matrix::display()
 
         cout << value[idx] << " ";
 
-        if ( k == dim-1 )    cout << endl;
-        if ( j == dim-1 )    cout << endl;
+        //if ( k == dim-1 )    cout << endl;
+        if ( i == dim-1 )    cout << endl;
 
     } // for ( int idx = 0; idx < cells; idx++ )
 
@@ -525,7 +525,7 @@ matrix matrix::Restriction(){
     if  ( dim%2 == 0 )  dim2 = dim / 2;
     else                dim2 = (dim+1) / 2;
     
-    matrix r2h( dim2, h/2.0 );
+    matrix r2h( dim2, h*2.0 );//important
 
     for ( int idx = 0; idx < cells; idx++ )
     {

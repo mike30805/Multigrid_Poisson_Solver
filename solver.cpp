@@ -22,7 +22,7 @@ matrix Solver_Potential( matrix pot, matrix dens )
 #   elif ( POT_SOLVER == FAS ) 
     // empty now
 #   elif ( POT_SOLVER == FMG ) 
-    matrix solution = FMG_Method( pot, dens, 2 );
+    matrix solution = FMG_Method( pot, dens, 1 );
 #   endif // #if ( POT_SOLVER == ... )
 
     return solution;
@@ -310,6 +310,13 @@ matrix FMG_Method( matrix phi, matrix dens, int n_fmg)
     const int exact_step   = SOR_EXACT_STEP;
     const int n = dens.get_dim();
 
+    matrix phi_coarse = phi.Restriction();
+    matrix dens_coarse = dens.Restriction();
+    
+   /* //phi = phi_coarse.Interpolation(n);
+    phi.display();
+    phi = V_Cycle(phi, dens);
+    phi.display();*/
     if(n<3){
         phi.SOR_smoothing( dens, exact_step );
     }

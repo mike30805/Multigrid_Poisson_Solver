@@ -116,11 +116,10 @@ int main()
     // Output Data
     if (out_stat)
     {
-        pot.init_potential();
-        matrix solved_pot = Solver_Potential( pot, dens );
         sprintf( potential_filename,  "Potential_%d%d.txt",  (output_counter%100)/10, output_counter%10 );
-        Output_matrix( solved_pot, potential_filename );
-        pot.Error(ans);
+        Output_matrix(solved_pot, potential_filename );
+        solved_pot.Error(ans);
+        //solved_pot.display();
     } // if ( out_stat )
 
     
