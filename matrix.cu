@@ -309,7 +309,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
     #elif ( N_DIMS == 3 )
     const double frac = 1.0/6.0;
     #endif//if ( N_DIMS == 2 )
-    auto start = chrono::steady_clock::now();
+    
 #   ifndef GPU
     for ( int t = 0; t < steps; t++ )
     {
@@ -394,9 +394,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
          
          if ( t%1000 == 0 && (err1+err2) <= SOR_ERROR )    break;
      } //for ( int t = 0; t < steps; t++ )
-    auto elapsed = chrono::steady_clock::now() - start;
-    auto sec_double = chrono::duration<double>(elapsed);     // double
-    cout << "Potential solve time: " << sec_double.count() << "(s)" << endl;
+
 #   endif //ifndef GPU
 #   ifdef GPU
     // allocate device memory

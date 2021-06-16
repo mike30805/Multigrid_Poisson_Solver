@@ -81,7 +81,7 @@ bool Init_TwoBody( matrix &mat, particle *pars )
     }
 
     mat.reset();
-
+    
     // particles
     double *pos = new double[N_DIMS];
     double *vel = new double[N_DIMS];
@@ -104,12 +104,12 @@ bool Init_TwoBody( matrix &mat, particle *pars )
         pos[2] = 0.0;
         vel[2] = 0.0;
         #endif
-
+        
         pars[p].Par_SetMass( 1.0 );
         pars[p].Par_SetPos( pos );
         pars[p].Par_SetVel( vel );
         pars[p].Par_AddMassToCell( mat );
-
+        
     } // for ( int p = 0; p < N_PARS; p++ )
 
     delete[] pos;
@@ -136,11 +136,10 @@ bool Init_NBody( matrix &mat, particle *pars )
     }
     
     mat.reset();
-
     // Initialize Particle IC Constructor
     double Newton_G      =  1.0;    //Gravitational Constant
     double Rho0          =  1.0;     // peak density [unit: M mass of sun/kpc^3]
-    double R0            =  0.1 ;                 // scale radius [unit: kpc]
+    double R0            =  1.0 ;                 // scale radius [unit: kpc]
     double MaxR          =  2.0;                    // maximum radius for particles [unit: kpc]
     int MassProfNBin   = 1000    ;             // number of radial bins in the mass profile table [1000]
     double Alpha         =1     ;               // alpha parameter for Eiasto model [1]
@@ -189,7 +188,6 @@ bool Init_NBody( matrix &mat, particle *pars )
         pars[p].Par_SetPos( pos );
         pars[p].Par_SetVel( vel );
         pars[p].Par_AddMassToCell( mat );
-
     } // for ( int p = 0; p < N_PARS; p++ )
 
     delete[] pos;

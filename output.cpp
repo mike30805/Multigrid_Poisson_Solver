@@ -75,9 +75,9 @@ void Output_particles( particle *pars, const char filename[] )
         pars[p].Par_GetPos( pos ); 
         pars[p].Par_GetVel( vel );
         
-        fprintf( file_par, "%5d, %.8e, ", p, mass );
-        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e, ", pos[d] );
-        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e, ", vel[d] );
+        fprintf( file_par, "%5d %.8e ", p, mass );
+        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e ", pos[d] );
+        for ( int d = 0; d < N_DIMS; d++ )    fprintf( file_par, "%.8e ", vel[d] );
         fprintf( file_par, "\n" );
     }
 
