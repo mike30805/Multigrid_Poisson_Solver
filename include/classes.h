@@ -14,11 +14,6 @@
 #include<omp.h>
 #endif
 
-#ifdef GPU
-#define BLOCK_SIZE         256
-#define GRID_SIZE          ( 10000 / BLOCK_SIZE )
-#endif
-
 using namespace std;
 
 class matrix

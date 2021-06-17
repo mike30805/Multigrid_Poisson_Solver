@@ -10,17 +10,19 @@ SIMU_OPTION =
 
 # (a) GPU acceleration
 # --> must turn off OMP
-#SIMU_OPTION += -DGPU
+SIMU_OPTION += -DGPU
 
 # (b) OMP acceleration
 # --> must turn off GPU
-SIMU_OPTION += -DOMP
+#SIMU_OPTION += -DOMP
 
 SRCS  := $(shell find $(SRCDIR) -name "*.cpp")
+OBJS   = $(SRCS:%.cpp=$(OBJDIR)/%.o)
 ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
 SRCS  := $(filter-out ./matrix.cpp, $(SRCS))
+OBJS  := $(filter-out ./matrix.o, $(OBJS))
 endif
-OBJS   = $(SRCS:%.cpp=$(OBJDIR)/%.o)
+
 
 ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
 SRCS_GPU   = $(shell find $(SRCDIR) -name "*.cu")
@@ -34,9 +36,9 @@ GSL_CFLAGS  = -I/software/gsl/default/include
 
 
 ifeq "$(filter -DOMP, $(SIMU_OPTION))" "-DOMP"
-FLAGS  = -fopenmp -Wall  #CPU
+FLAGS  = -fopenmp -Wall #CPU
 else
-FLAGS  = -Wall  #CPU
+FLAGS  = -Wall #CPU
 endif
 
 ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
@@ -71,17 +73,27 @@ else
 	@$(CC) $(FLAGS) -I$(INCDIR) -o $(OUT) $(OBJS)  $(GSL_LIB)
 endif
 
-$(OBJDIR)/%.o: %.cpp
+
+
+$(OBJDIR)/%.o: %.cpp 
 	@echo "Compiling source: $<"
+ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
+	@if [ $< !=  "matrix.cpp" ]; \
+    then $(CC) $(FLAGS) $(GSL_CFLAGS) -I$(INCDIR) -c $<  -o $@ ;\
+	else $(NVCC) $(NVCC_FLAGS) $(GSL_CFLAGS) -I$(INCDIR) -c matrix.cu  -o $@;\
+	fi
+else
 	@$(CC) $(FLAGS) $(GSL_CFLAGS) -I$(INCDIR) -c $<  -o $@
+endif
 
 $(OBJDIR)/%.o: %.cu
 	@echo "Compiling source: $<"
 	@$(NVCC) $(NVCC_FLAGS) $(GSL_CFLAGS) -I$(INCDIR) -c $<  -o $@
 
 
+
 .PHONY:clean
 
 clean:
-	rm -f $(OBJS) $(OUT)
+	rm -f $(OBJDIR)/*.o
 

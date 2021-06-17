@@ -77,6 +77,41 @@ void matrix::Error( const matrix &b )
 #   ifdef GPU
 __global__
 void SOR_smoothing_GPU(const bool even, const int dim, const double h, double* d_value, double* d_rho){
+
+#   if(PROB_NUM==PROB_SINWAVE)
+#   if(N_DIMS==2)
+    const double frac = 0.25;
+    const int i = blockIdx.x;
+    const int j = threadIdx.x;
+    int a;
+    if (even) { a = 0; }
+    else a = 1;
+    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || (i + j) % 2 == a) {
+    }
+    else {
+        int idx = i * dim + j;
+        d_value[idx] += SOR_OMEGA * frac * (d_value[idx + 1] + d_value[idx - 1] +
+            d_value[idx + dim] + d_value[idx - dim] -
+            d_value[idx] * 4 - h * h * d_rho[idx]);
+    }
+#   elif(N_DIMS==3)
+    const double frac = 1/6.;
+    const int i = blockIdx.x;
+    const int j = threadIdx.x / BOX_N;
+    const int k = threadIdx.x % BOX_N;
+    int a;
+    if (even) { a = 0; }
+    else a = 1;
+    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1 || (i + j + k) % 2 == a) {
+    }
+    else {
+        int idx = i * dim * dim + j * dim + k;
+        d_value[idx] += SOR_OMEGA * frac * (d_value[idx + 1] + d_value[idx - 1] +
+            d_value[idx + dim] + d_value[idx - dim] + d_value[idx + dim * dim] + d_value[idx - dim * dim] -
+            d_value[idx] * 6 - h * h * h * d_rho[idx]); 
+    }
+#   endif //#   if(N_DIMS==2)
+#   else //if(PROB_NUM==PROB_SINWAVE)
     const int  idx = blockDim.x * blockIdx.x + threadIdx.x;
     int did_x[3];
     did_x[0] = 1;       // i
@@ -121,8 +156,8 @@ void SOR_smoothing_GPU(const bool even, const int dim, const double h, double* d
          d_value[idx] * 6 - h * h * h * d_rho[idx]);
      }
             
-#endif
-     
+#endif//   if ( N_DIMS == 2 )
+#endif//if(PROB_NUM==PROB_SINWAVE)
     
 
 } // FUNCTION :  SOR_smoothing_GPU
@@ -130,171 +165,123 @@ void SOR_smoothing_GPU(const bool even, const int dim, const double h, double* d
 
 void matrix::SOR_smoothing(const matrix& rho, int steps)
 {
-    double err1, err2, residual;
-#if ( N_DIMS == 2 )
-    const double frac = 0.25;
-#elif ( N_DIMS == 3 )
-    const double frac = 1.0 / 6.0;
-#endif
-#   ifndef GPU
-    for (int t = 0; t < steps; t++)
-    {
-        err1 = 0.0;
-        err2 = 0.0;
-
-
+#if(PROB_NUM==PROB_SINWAVE)
+#ifndef GPU
+#   if ( N_DIMS == 2 )
+    double fracs = 0.25;
+    for (int t = 0; t < steps; t++) {
 #   ifdef OMP_PARALLEL
 #   pragma omp parallel num_threads(OMP_THREAD_NUM) 
         {
             const int tid = omp_get_thread_num();
-            
-#       pragma omp for
-#   endif // #ifdef OMP_PARALLEL
-            for (int idx = 0; idx < cells; idx++)
-            {
-                
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || (i + j) % 2 == 0) {
+                    }
+                    else {
+                        int idx = i * dim + j;
+                        this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                            this->value[idx + dim] + this->value[idx - dim] -
+                            this->value[idx] * 4 - h * h * rho.value[idx]);
+                    }
 
-                const int i = idx % dim;
-                const int j = (idx % (dim * dim)) / dim;
-                const int k = idx / (dim * dim);
-
-#if ( N_DIMS == 2 )
-                if ((i+j) % 2 != 0)    continue;
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
-
-                this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                    this->value[idx] * 4 - h * h * rho.value[idx]);
-#elif ( N_DIMS == 3 )
-                if ((i+j+k) % 2 != 0)    continue;
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
-                this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                    this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                    this->value[idx] * 6 - h * h * h * rho.value[idx]);
-#endif
-
-                if (t % 1000 == 0)
-                {
-#if ( N_DIMS == 2 )
-                    residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                        this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                        this->value[idx] * 4 - h * h * rho.value[idx];
-#elif ( N_DIMS == 3 )
-                    residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                        this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                        this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                        this->value[idx] * 6 - h * h * h * rho.value[idx];
-#endif
-
-                    err1 += fabs(residual / this->value[idx]);
-                } // if ( t%1000 == 0 )
-
-            } // for ( int idx = 0; idx < cells; idx++ )
-
-#       ifdef OMP_PARALLEL
+                }
+            }
+#   ifdef OMP_PARALLEL
 #       pragma omp barrier
-#       pragma omp for
-#       endif // #ifdef OMP_PARALLEL
-            for (int idx = 0; idx < cells; idx++)
-            {
-                
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || (i + j) % 2 == 1) {
+                    }
+                    else {
+                        int idx = i * dim + j;
+                        this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                            this->value[idx + dim] + this->value[idx - dim] -
+                            this->value[idx] * 4 - h * h * rho.value[idx]);
+                    }
 
-                const int i = idx % dim;
-                const int j = (idx % (dim * dim)) / dim;
-                const int k = idx / (dim * dim);
+                }
+            }
+#   ifdef OMP_PARALLEL
+        }//pragma omp parallel num_threads(OMP_THREAD_NUM) 
+#   endif//ifdef OMP_PARALLEL
+    }//for (int t = 0; t < steps; t++)
+#   elif ( N_DIMS == 3 )
+    double fracs = 1/6.;
+    for (int t = 0; t < steps; t++) {
+#   ifdef OMP_PARALLEL
+#   pragma omp parallel num_threads(OMP_THREAD_NUM) 
+        {
+            const int tid = omp_get_thread_num();
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    for (int k = 0; k < dim; k++) {
+                        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1 || (i + j + k) % 2 == 0) {
+                        }
+                        else {
+                            int idx = i * dim * dim + j * dim + k;
+                            this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                                this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim*dim] + this->value[idx - dim * dim] -
+                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                        }
+                    }
 
-#if ( N_DIMS == 2 )
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
-                if ((i+j) % 2 != 1)    continue;
+                }
+            }
+#   ifdef OMP_PARALLEL
+#       pragma omp barrier
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    for (int k = 0; k < dim; k++) {
+                        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1 || (i + j + k) % 2 == 1) {
+                        }
+                        else {
+                            int idx = i * dim * dim + j * dim + k;
+                            this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                                this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
+                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                        }
+                    }
 
-                this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                    this->value[idx] * 4 - h * h * rho.value[idx]);
-#elif ( N_DIMS == 3 )
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
-                if ((i+j+k) % 2 != 1)    continue;
-                this->value[idx] += SOR_OMEGA * frac * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                    this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                    this->value[idx] * 6 - h * h * h * rho.value[idx]);
-#endif
+                }
+            }
+#   ifdef OMP_PARALLEL
+    }//pragma omp parallel num_threads(OMP_THREAD_NUM) 
+#   endif//ifdef OMP_PARALLEL
+}//for (int t = 0; t < steps; t++)
+#   endif//if ( N_DIMS == 2 )
 
-                if (t % 1000 == 0)
-                {
-#if ( N_DIMS == 2 )
-                    residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                        this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                        this->value[idx] * 4 - h * h * rho.value[idx];
-#elif ( N_DIMS == 3 )
-                    residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                        this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                        this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                        this->value[idx] * 6 - h * h * h * rho.value[idx];
-#endif
-
-                    err2 += fabs(residual / this->value[idx]);
-                } // if ( t%1000 == 0 )
-
-            } // for ( int idx = 0; idx < cells; idx++ )
-
-#    ifdef OMP_PARALLEL
-        } // # pragma omp parallel
-#    endif // #ifdef OMP_PARALLEL
-
-        if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
-
-    } //for ( int t = 0; t < steps; t++ )
-#   endif //ifndef GPU
-
-#   ifdef GPU
-    // allocate device memory
-    
+#   else//ifndef GPU
     double* d_value, * d_rho;
     cudaMalloc(&d_value, cells * sizeof(double));
     cudaMalloc(&d_rho, cells * sizeof(double));
-    
+
     cudaMemcpy(d_value, this->value, cells * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_rho, rho.value, cells * sizeof(double), cudaMemcpyHostToDevice);
 
     for (int t = 0; t < steps; t++)
     {
-        err1 = 0.0;
-        err2 = 0.0;
-
-
         SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, d_value, d_rho);
         SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, d_value, d_rho);
 
-        if (t % 1000 == 0)
+        if (t ==steps-1)
         {
             cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
             cudaMemcpy(rho.value, d_rho, cells * sizeof(double), cudaMemcpyDeviceToHost);
-
-            for (int idx = 0; idx < cells; idx++)
-            {
-                const int i = idx % dim;
-                const int j = (idx % (dim * dim)) / dim;
-                const int k = idx / (dim * dim);
-
-#           if ( N_DIMS == 2 )
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
-                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                    this->value[idx] * 4 - h * h * rho.value[idx];
-#           elif ( N_DIMS == 3 )
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
-                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                    this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                    this->value[idx] * 6 - h * h * h * rho.value[idx];
-#endif
-                err2 += fabs(residual / this->value[idx]);
-            }//for (int idx = 0; idx < cells; idx++)
-            if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
-        } // if ( t%1000 == 0 )
+        }
     }
-#   endif//ifdef GPU
+#   endif//ifndef GPU
+
+#   else//if(PROB_NUM==PROB_SINWAVE)
+#   endif//if(PROB_NUM==PROB_SINWAVE)
 } // FUNCTION : matrix::SOR_smoothing
 
 
@@ -302,103 +289,101 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 
 void matrix::SOR_Exact( const matrix &rho, int steps )
 {
-
-    double err1, err2, residual;
-    #if ( N_DIMS == 2 )
-    const double frac = 0.25;
-    #elif ( N_DIMS == 3 )
-    const double frac = 1.0/6.0;
-    #endif//if ( N_DIMS == 2 )
-    
-#   ifndef GPU
-    for ( int t = 0; t < steps; t++ )
-    {
-        err1 = 0.0;
-        err2 = 0.0;
+#if(PROB_NUM==PROB_SINWAVE)
+#ifndef GPU
+#   if ( N_DIMS == 2 )
+    double fracs = 0.25;
+    for (int t = 0; t < steps; t++) {
 #   ifdef OMP_PARALLEL
 #   pragma omp parallel num_threads(OMP_THREAD_NUM) 
-    {
-        const int tid = omp_get_thread_num();
-        //cout << tid << endl;
-#       pragma omp for
-#   endif // #ifdef OMP_PARALLEL
-        for ( int idx = 0; idx < cells; idx++ )
         {
-             
-             
-             const int i = idx%dim;
-             const int j = ( idx%(dim*dim) ) / dim;
-             const int k = idx/(dim*dim);
-             
-             #if ( N_DIMS == 2 )
-             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
-             if ((i+j) % 2 != 0)    continue;
-             
-             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
-                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
-                        this->value[ idx ] * 4      - h * h * rho.value[ idx ] ;
-             
-             #elif ( N_DIMS == 3 )
-             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
-             if ((i+j+k) % 2 != 0)    continue;
-             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
-                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
-                        this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
-                        this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] ;
-             #endif
-             
-             this->value[idx] += SOR_OMEGA * frac * residual; 
-             
-             if ( t%1000 == 0 )    err1 += fabs( residual / this->value[idx] );
+            const int tid = omp_get_thread_num();
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || (i + j) % 2 == 0) {
+                    }
+                    else {
+                        int idx = i * dim + j;
+                        this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                            this->value[idx + dim] + this->value[idx - dim] -
+                            this->value[idx] * 4 - h * h * rho.value[idx]);
+                    }
 
-        } // for ( int idx = 0; idx < cells; idx++ )
+                }
+            }
+#   ifdef OMP_PARALLEL
+#       pragma omp barrier
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || (i + j) % 2 == 1) {
+                    }
+                    else {
+                        int idx = i * dim + j;
+                        this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                            this->value[idx + dim] + this->value[idx - dim] -
+                            this->value[idx] * 4 - h * h * rho.value[idx]);
+                    }
 
-#        ifdef OMP_PARALLEL
-#        pragma omp barrier
-#        pragma omp for
-#        endif // #ifdef OMP_PARALLEL
-        for ( int idx = 0; idx < cells; idx++ )
+                }
+            }
+#   ifdef OMP_PARALLEL
+            }//pragma omp parallel num_threads(OMP_THREAD_NUM) 
+#   endif//ifdef OMP_PARALLEL
+            }//for (int t = 0; t < steps; t++)
+#   elif ( N_DIMS == 3 )
+    double fracs = 1 / 6.;
+    for (int t = 0; t < steps; t++) {
+#   ifdef OMP_PARALLEL
+#   pragma omp parallel num_threads(OMP_THREAD_NUM) 
         {
-             
-             
-             const int i = idx%dim;
-             const int j = ( idx%(dim*dim) ) / dim;
-             const int k = idx/(dim*dim);
-             
-             #if ( N_DIMS == 2 )
-             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
-             if ((i+j) % 2 != 1)    continue;
-             
-             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
-                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
-                        this->value[ idx ] * 4      - h * h * rho.value[ idx ] ;
-             
-             #elif ( N_DIMS == 3 )
-             if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
-             if ((i+j+k) % 2 != 1)    continue;
-             residual = this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
-                        this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] +
-                        this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] -
-                        this->value[ idx ] * 6      - h * h * h * rho.value[ idx ] ;
-             #endif
-             
-             this->value[idx] += SOR_OMEGA * frac * residual; 
-             
-             if ( t%1000 == 0 )    err2 += fabs( residual / this->value[idx] );
+            const int tid = omp_get_thread_num();
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    for (int k = 0; k < dim; k++) {
+                        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1 || (i + j + k) % 2 == 0) {
+                        }
+                        else {
+                            int idx = i * dim * dim + j * dim + k;
+                            this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                                this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
+                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+}
+                    }
 
-        } // for ( int idx = 0; idx < cells; idx++ )
+                }
+            }
+#   ifdef OMP_PARALLEL
+#       pragma omp barrier
+#       pragma omp for collapse(1)
+#   endif
+            for (int i = 0; i < dim; i++) {
+                for (int j = 0; j < dim; j++) {
+                    for (int k = 0; k < dim; k++) {
+                        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1 || (i + j + k) % 2 == 1) {
+                        }
+                        else {
+                            int idx = i * dim * dim + j * dim + k;
+                            this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
+                                this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
+                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                        }
+                    }
 
-#    ifdef OMP_PARALLEL
-     } // # pragma omp parallel
-#    endif // #ifdef OMP_PARALLEL
-         
-         if ( t%1000 == 0 && (err1+err2) <= SOR_ERROR )    break;
-     } //for ( int t = 0; t < steps; t++ )
+                }
+            }
+#   ifdef OMP_PARALLEL
+    }//pragma omp parallel num_threads(OMP_THREAD_NUM) 
+#   endif//ifdef OMP_PARALLEL
+}//for (int t = 0; t < steps; t++)
+#   endif//if ( N_DIMS == 2 )
 
-#   endif //ifndef GPU
-#   ifdef GPU
-    // allocate device memory
-
+#   else//ifndef GPU
     double* d_value, * d_rho;
     cudaMalloc(&d_value, cells * sizeof(double));
     cudaMalloc(&d_rho, cells * sizeof(double));
@@ -408,42 +393,20 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
 
     for (int t = 0; t < steps; t++)
     {
-        err1 = 0.0;
-        err2 = 0.0;
-
-
         SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, d_value, d_rho);
         SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, d_value, d_rho);
-
-        if (t % 1000 == 0)
+        //cout << "good!" << endl;
+        if (t == steps - 1)
         {
             cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
             cudaMemcpy(rho.value, d_rho, cells * sizeof(double), cudaMemcpyDeviceToHost);
-
-            for (int idx = 0; idx < cells; idx++)
-            {
-                const int i = idx % dim;
-                const int j = (idx % (dim * dim)) / dim;
-                const int k = idx / (dim * dim);
-
-#           if ( N_DIMS == 2 )
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)    continue;
-                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
-                    this->value[idx] * 4 - h * h * rho.value[idx];
-#           elif ( N_DIMS == 3 )
-                if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)    continue;
-                residual = this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
-                    this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
-                    this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-                    this->value[idx] * 6 - h * h * h * rho.value[idx];
-#endif
-                err2 += fabs(residual / this->value[idx]);
-            }//for (int idx = 0; idx < cells; idx++)
-            if (t % 1000 == 0 && (err1 + err2) <= SOR_ERROR)    break;
-        } // if ( t%1000 == 0 )
+        }
     }
-#   endif//ifdef GPU
+#   endif//ifndef GPU
+
+#   else//if(PROB_NUM==PROB_SINWAVE)
+
+#endif//#if(PROB_NUM==PROB_SINWAVE)
 } // FUNCTION : matrix::SOR_Exact
 
 

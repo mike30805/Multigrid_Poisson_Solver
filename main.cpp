@@ -14,13 +14,19 @@ double f( const double x, const double y )
     return sin(x) * sin(y) + BG_POTENTIAL;
 } // FUNCTION : f
 
+double g(const double x, const double y,double z)
+{
+    return sin(x) * sin(y) * sin(z) + BG_POTENTIAL;
+} // FUNCTION : g
+
 
 
 void solved( matrix &m )
 {
     const int dim = m.get_dim();
     const int dim_2 = dim*dim;
-    
+    const int dim_3 = dim * dim * dim;
+#   if ( N_DIMS == 2 )
     for ( int idx = 0; idx < dim_2; idx++ )
     {
         const int i = idx / dim;
@@ -32,6 +38,21 @@ void solved( matrix &m )
       
         m.input_answer( idx, f(x, y) );
     } // for ( int idx = 0; idx < dim_2; idx++ )
+#   elif ( N_DIMS == 3 )
+    for (int idx = 0; idx < dim_3; idx++)
+    {
+        const int i = idx / dim_2;
+        const int j = (idx % dim_2)/dim;
+        const int k = (idx % dim_2) % dim;
+
+        const double h = m.get_h();
+        const double x = h * i;
+        const double y = h * j;
+        const double z = h * k;
+
+        m.input_answer(idx, g(x, y, z));
+    } // for ( int idx = 0; idx < dim_2; idx++ )
+#endif //#   if ( N_DIMS == 2 )
 
 } // FUNCTION : solved
 
