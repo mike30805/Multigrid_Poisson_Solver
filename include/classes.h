@@ -37,6 +37,7 @@ class matrix
         matrix Restriction();
         double insertion(int idx,int dim_in);
         matrix Interpolation(int idx);
+        double Residual_error(const matrix& rho);
         matrix Residual(const matrix& rho);
         matrix Laplacian();
   

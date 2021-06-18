@@ -176,11 +176,11 @@ int main()
     Output_matrix( dens, density_filename );
     Output_particles( pars, particle_filename );
    
-    //matrix pot( BOX_N, dx );
-    //pot.init_potential();
-    //matrix solved_pot = Solver_Potential( pot, dens );
-    //sprintf( potential_filename,  "Potential_%d%d.txt",  (output_counter%100)/10, output_counter%10 );
-    //Output_matrix( solved_pot, potential_filename );
+    matrix pot( BOX_N, dx );
+    pot.init_potential();
+    matrix solved_pot = Solver_Potential( pot, dens );
+    sprintf( potential_filename,  "Potential_%d%d.txt",  (output_counter%100)/10, output_counter%10 );
+    Output_matrix( solved_pot, potential_filename );
     output_counter += 1;
 
     // 3. Time evolution.
@@ -198,10 +198,11 @@ int main()
         // Output Data
         if ( out_stat )
         {
-            //pot.init_potential();
-            //matrix solved_pot = Solver_Potential( pot, dens );
-            //sprintf( potential_filename,  "Potential_%d%d.txt",  (output_counter%100)/10, output_counter%10 );
-            //Output_matrix( solved_pot, potential_filename );
+            //potential term
+            pot.init_potential();
+            matrix solved_pot = Solver_Potential( pot, dens );
+            sprintf( potential_filename,  "Potential_%d%d.txt",  (output_counter%100)/10, output_counter%10 );
+            Output_matrix( solved_pot, potential_filename );
             
             sprintf( density_filename,  "Density_%d%d.txt",  (output_counter%100)/10, output_counter%10 );
             sprintf( particle_filename, "Particle_%d%d.txt", (output_counter%100)/10, output_counter%10 );
