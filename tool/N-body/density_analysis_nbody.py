@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pylab as plt
 from matplotlib.colors import LogNorm
 
@@ -96,9 +98,9 @@ def plot_profile( filename, savename, center=[], n_bin=100 ):
     return
 
 
-N = 1
-n_bin = 20
-data_center = [10, 10, 10]
+N = 30
+n_bin = 15
+data_center = [15, 15, 15]
 ana_obj = "Density"
 
 for i in range(N):

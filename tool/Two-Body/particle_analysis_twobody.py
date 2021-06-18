@@ -1,8 +1,10 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pylab as plt
 from matplotlib.colors import LogNorm
 
-N = 1
+N = 30
 center_radius = 3.0
 t = []
 p1_vx = []
