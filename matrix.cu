@@ -218,18 +218,25 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
 
 #   else//ifndef GPU
     double* d_value, * d_rho;
-    
-    cudaMalloc(&d_value, cells * sizeof(double));
-    cudaMalloc(&d_rho, cells * sizeof(double));
+    int block_num = this->dim;
+#   if ( N_DIMS == 2 )
+    int block_scale = this->dim;
+    int cell_num = pow(this->dim, 2);
+#   elif ( N_DIMS == 3 )//if ( N_DIMS == 2 )
+    int block_scale = pow(this->dim, 2);
+    int cell_num = pow(this->dim, 3);
+#   endif//if ( N_DIMS == 2 )
+    cudaMalloc(&d_value, cell_num * sizeof(double));
+    cudaMalloc(&d_rho, cell_num * sizeof(double));
 
 
-    cudaMemcpy(d_value, this->value, cells * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_rho, rho.value, cells * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_value, this->value, cell_num * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_rho, rho.value, cell_num * sizeof(double), cudaMemcpyHostToDevice);
 
     for (int t = 0; t < steps; t++)
     {
-        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, d_value, d_rho);
-        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, d_value, d_rho);
+        SOR_smoothing_GPU << < block_num, block_scale >> > (true, dim, h, d_value, d_rho);
+        SOR_smoothing_GPU << < block_num, block_scale >> > (false, dim, h, d_value, d_rho);
 
         //if (t ==steps-1)
         {
@@ -243,8 +250,8 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
             if (this->Residual_error(rho) < SOR_ERROR)break;*/
         }
     }
-    cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(rho.value, d_rho, cells * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(this->value, d_value, cell_num * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(rho.value, d_rho, cell_num * sizeof(double), cudaMemcpyDeviceToHost);
 
     cudaFree(d_value);//important
     cudaFree(d_rho);
@@ -360,23 +367,31 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
 
 #   else//ifndef GPU
     double* d_value, * d_rho;
+    int block_num = this->dim;
+    #   if ( N_DIMS == 2 )
+    int block_scale = this->dim;
+    int cell_num = pow(this->dim, 2);
+    #   elif ( N_DIMS == 3 )//if ( N_DIMS == 2 )
+    int block_scale = pow(this->dim, 2);
+    int cell_num = pow(this->dim, 3);
+    #   endif//if ( N_DIMS == 2 )
+    cudaMalloc(&d_value, cell_num * sizeof(double));
+    cudaMalloc(&d_rho, cell_num * sizeof(double));
 
-    cudaMalloc(&d_value, cells * sizeof(double));
-    cudaMalloc(&d_rho, cells * sizeof(double));
 
-    cudaMemcpy(d_value, this->value, cells * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_rho, rho.value, cells * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_value, this->value, cell_num * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_rho, rho.value, cell_num * sizeof(double), cudaMemcpyHostToDevice);
 
     for (int t = 0; t < steps; t++)
     {
-        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (true, dim, h, d_value, d_rho);
-        SOR_smoothing_GPU << < GRID_SIZE, BLOCK_SIZE >> > (false, dim, h, d_value, d_rho);
+        SOR_smoothing_GPU << < block_num, block_scale >> > (true, dim, h, d_value, d_rho);
+        SOR_smoothing_GPU << < block_num, block_scale >> > (false, dim, h, d_value, d_rho);
 
-        //if (t == steps - 1)
+        //if (t ==steps-1)
         {
-            
+
         }
-        
+
         //if (t % 1000 == 0)
         {
             /*cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
@@ -384,12 +399,11 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
             if (this->Residual_error(rho) < SOR_ERROR)break;*/
         }
     }
-    cudaMemcpy(this->value, d_value, cells * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(rho.value, d_rho, cells * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(this->value, d_value, cell_num * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(rho.value, d_rho, cell_num * sizeof(double), cudaMemcpyDeviceToHost);
 
     cudaFree(d_value);//important
     cudaFree(d_rho);
-
 
 #   endif//ifndef GPU
 } // FUNCTION : matrix::SOR_Exact
