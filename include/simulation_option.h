@@ -1,6 +1,6 @@
 // Simulation option 
 #define N_DIMS                  3                              // Simulation dimensions.
-#define BOX_N                   30                              // Simulation resolution.
+#define BOX_N                   20                              // Simulation resolution.
 #define BOX_L                   10.0                             // Simulation box size.
 
 
@@ -24,12 +24,12 @@
 
 
 // Parallel
-//#define OMP_PARALLEL                                            // Open the openMP parallel, must turn off GPU
+#define OMP_PARALLEL                                            // Open the openMP parallel, must turn off GPU
 #ifdef OMP_PARALLEL  
 #define OMP_THREAD_NUM         8 
 #endif
 
-#define GPU													// Open GPU parallel, must turn off openMP.
+//#define GPU													// Open GPU parallel, must turn off openMP.
 #ifdef GPU
 #   if ( N_DIMS == 2 )
 #define BLOCK_SIZE         BOX_N
