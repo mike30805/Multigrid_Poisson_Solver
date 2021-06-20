@@ -10,11 +10,11 @@ SIMU_OPTION =
 
 # (a) GPU acceleration
 # --> must turn off OMP
-#SIMU_OPTION += -DGPU
+SIMU_OPTION += -DGPU
 
 # (b) OMP acceleration
 # --> must turn off GPU
-SIMU_OPTION += -DOMP
+#SIMU_OPTION += -DOMP
 
 SRCS  := $(shell find $(SRCDIR) -name "*.cpp")
 OBJS   = $(SRCS:%.cpp=$(OBJDIR)/%.o)

@@ -95,23 +95,24 @@ bool Init_TwoBody( matrix &mat, particle *pars )
     {
         if (p == 0)
         {
+            pos[0] = BOX_L/2.0 ;
+            pos[1] = BOX_L/2.0;
+            vel[0] = 0.0;
+            vel[1] = 0.0;
+        } else
+        {
             pos[0] = BOX_L/2.0 + 1.0;
             pos[1] = BOX_L/2.0;
             vel[0] = 0.0;
-            vel[1] = 0.5;
-        } else
-        {
-            pos[0] = BOX_L/2.0 - 1.0;
-            pos[1] = BOX_L/2.0;
-            vel[0] = 0.0;
-            vel[1] = -0.5;
+            vel[1] = pow(2*PI,-0.5);
         }
         #if ( N_DIMS == 3 )
-        pos[2] = 0.0;
+        pos[2] = BOX_L / 2.0;
         vel[2] = 0.0;
         #endif
         
         pars[p].Par_SetMass( 1.0 );
+        if(p==1)pars[p].Par_SetMass(0.0);
         pars[p].Par_SetPos( pos );
         pars[p].Par_SetVel( vel );
         pars[p].Par_AddMassToCell( mat );
