@@ -1,25 +1,25 @@
 // Simulation option 
 #define N_DIMS                  2                               // Simulation dimensions.
 #define BOX_N                   200                              // Simulation resolution.
-#define BOX_L                   6.0                             // Simulation box size.
+#define BOX_L                   20.                             // Simulation box size.
 
 
 // Simulation time
-#define END_TIME                3.0                             // Simulation end time.
+#define END_TIME                10.0                             // Simulation end time.
 
 
 // Problem number (checkout macro.h)
-//#define PROB_NUM               PROB_SINWAVE
+#define PROB_NUM               PROB_SINWAVE
 #define PROB_NUM                PROB_TWOBODY
 //#define PROB_NUM                PROB_NBODY
 
 
 // Potential solver
 #define BG_POTENTIAL            10.0                            // Background potential. (Notice: Don't set it to zero!)
-#define POT_SOLVER              W_CYCLE                         // SOR / V_CYCLE / W_CYCLE / FAS / FMG
+#define POT_SOLVER              FMG                         // SOR / V_CYCLE / W_CYCLE / FAS / FMG
 #define SOR_OMEGA               1.9                             // SOR weight
-#define SOR_SMOOTH_STEP         100                           // Smooth step converge lower than 10000 for N=200
-#define SOR_EXACT_STEP          10000                          // Exact step will only affect on SOR solver. 
+#define SOR_SMOOTH_STEP         0                          // Smooth step converge lower than 10000 for N=200
+#define SOR_EXACT_STEP          0                          // Exact step will only affect on SOR solver. 
 #define SOR_ERROR               1.e-10                          // Solver converge threshold
 
 

@@ -12,7 +12,7 @@ matrix SOR_Method( matrix phi, matrix dens );
 
 matrix V_Cycle( matrix phi, matrix dens );
 
-matrix W_Cycle( matrix phi, matrix dens, const int LR );
+matrix W_Cycle( matrix phi, matrix dens );
 
 matrix FAS_Method( matrix phi, matrix dens );
 
