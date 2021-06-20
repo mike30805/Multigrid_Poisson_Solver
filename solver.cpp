@@ -18,7 +18,7 @@ matrix Solver_Potential( matrix pot, matrix dens )
 #   elif ( POT_SOLVER == V_CYCLE ) 
     matrix solution = V_Cycle( pot, dens );
 #   elif ( POT_SOLVER == W_CYCLE ) 
-    matrix solution = W_Cycle( pot, dens, 1 );
+    matrix solution = W_Cycle( pot, dens );
 #   elif ( POT_SOLVER == FAS ) 
     // empty now
 #   elif ( POT_SOLVER == FMG ) 
@@ -125,9 +125,7 @@ matrix V_Cycle( matrix phi, matrix dens )
     if ( n <= 3 )
     {
           // Exact solver
-          matrix eps( phi.get_dim(), phi.get_h() );
-          matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, exact_step );
+          phi.SOR_smoothing( dens, exact_step );
     }
 
     else{
@@ -144,9 +142,11 @@ matrix V_Cycle( matrix phi, matrix dens )
         
         // Go to smaller grid size
         eps = V_Cycle( eps, rhs );  
-    
+
         // Prolongation and Correction
-        phi = phi + eps.Interpolation( phi.get_dim() );
+        matrix phi_corr = eps.Interpolation(phi.get_dim());//important
+        phi_corr.set_boundary(0.);//important
+        phi = phi + phi_corr;//important
         
         // Post-Smoothing
     }
@@ -169,7 +169,7 @@ matrix V_Cycle( matrix phi, matrix dens )
 //                      1 : the right valley of the W cycle
 // Output      : Solved potential 2D array
 //--------------------------------------------------------------------------------
-matrix W_Cycle( matrix phi, matrix dens, const int LR )
+matrix W_Cycle( matrix phi, matrix dens )
 {
      const int smooth_step  = SOR_SMOOTH_STEP;
      const int exact_step   = SOR_EXACT_STEP;
@@ -179,36 +179,11 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
      if ( n <= 3 )
      {
           // Exact solver
-          matrix eps( phi.get_dim(), phi.get_h() );
-          matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, exact_step );
+          phi.SOR_smoothing(dens, exact_step);
      }
      // stop recursion at smallest grid size
-     else if ( n <= 7 ) // if ( n <= 3 )
-     {
-          // Pre-Smoothing
-          phi.SOR_smoothing( dens, smooth_step );
-          
-          // Restriction
-          matrix r = phi.Residual( dens );
-          matrix rhs = r.Restriction();
-          
-          // Exact solver
-          matrix eps( rhs.get_dim(), rhs.get_h() );
-          matrix dens2 = dens.Restriction();
-          eps.SOR_smoothing( dens2, exact_step );
-          
-          // Prolongation
-          phi = phi + eps.Interpolation( phi.get_dim() );
-          
-          // Don't do the Post-smoothing for the left valley
-          if ( LR == 1 )
-          {
-               // Post-Smoothing
-               phi.SOR_smoothing( dens, smooth_step );
-          }
-     }
-     else // if ( n <= 3 ) ... else if ( n <= 7 ) ...
+     
+     else // if ( n <= 3 ) 
      {
           // Pre-Smoothing
           phi.SOR_smoothing( dens, smooth_step );
@@ -219,21 +194,21 @@ matrix W_Cycle( matrix phi, matrix dens, const int LR )
           matrix eps( rhs.get_dim(), rhs.get_h() );
           
           // Left valley
-          eps = W_Cycle( eps, rhs, 0 );
+          eps = W_Cycle( eps, rhs );
   
           // Right valley
-          eps = W_Cycle( eps, rhs, 1 );
+          eps = W_Cycle( eps, rhs );
           
           // Prolongation
-          phi = phi + eps.Interpolation( phi.get_dim() );
+          matrix phi_corr = eps.Interpolation(phi.get_dim());//important
+          phi_corr.set_boundary(0.);//important
+          phi = phi + phi_corr;//important
           
-          // Don't do the Post-smoothing for the left valley
-          if ( LR == 1 )
-          {
-               // Post-Smoothing
-               phi.SOR_smoothing( dens, smooth_step );
-          }
-     } // if ( n <= 3 ) ... else if ( n <= 7 ) ... else ...
+
+          // Post-Smoothing
+          phi.SOR_smoothing( dens, smooth_step );
+          
+     } // else //if ( n <= 3 ) 
      
      return phi;
    
@@ -325,9 +300,9 @@ matrix FMG_Method( matrix phi, matrix dens, int n_fmg)
         matrix dens_coarse = dens.Restriction();
         phi_coarse = FMG_Method( phi_coarse, dens_coarse,n_fmg);
         phi = phi_coarse.Interpolation(n);
+        phi.set_boundary(BG_POTENTIAL);//important-bc.problem
         for(int i=0;i<n_fmg;i++){
             phi = V_Cycle( phi, dens );
-            //phi = W_Cycle( phi, dens, 1 );
         }
     }
     return phi;

@@ -731,23 +731,27 @@ double matrix::Residual_error(const matrix& rho)
 matrix matrix::Residual( const matrix & rho )
 {
     matrix res( this->dim, this->h );
-    for( int idx = 0; idx < cells; idx++ ) 
+    for (int idx = 0; idx < cells; idx++)
     {
-        const int i = idx%dim;
-        const int j = ( idx%(dim*dim) ) / dim;
-        const int k = idx/(dim*dim);
-        
-        #if ( N_DIMS == 2 )
-        if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 )    continue;
-        res.value[idx] = 0.25 * ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
-                                  this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] -
-                                  this->value[ idx ]*4 - h*h*rho.value[ idx ] ) / h / h;
-        #elif ( N_DIMS == 3 )
-        if ( i == 0 || i == dim-1 || j == 0 || j == dim-1 || k == 0 || k == dim-1 )    continue;
-        res.value[idx] = ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
-                           this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] + 
-                           this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] - 
-                           this->value[ idx ]*6 - h*h*rho.value[ idx ] ) / h / h  / 6.;
+        const int i = idx % dim;
+        const int j = (idx % (dim * dim)) / dim;
+        const int k = idx / (dim * dim);
+
+#if ( N_DIMS == 2 )
+        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)  res.value[idx] = 0;//continue;//important-bc.problem.
+        else {
+            res.value[idx] = 0.25 * (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
+                this->value[idx + did_x[1]] + this->value[idx - did_x[1]] -
+                this->value[idx] * 4 - h * h * rho.value[idx]) / h / h;
+        }
+#elif ( N_DIMS == 3 )
+        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)  res.value[idx] = 0;  //continue;//important-bc.problem.
+        else {
+            res.value[idx] = (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
+                this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
+                this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
+                this->value[idx] * 6 - h * h * rho.value[idx] ) / h / h / 6.;
+        }
         #endif
         
     } // for( int idx = 0; idx < cells; idx++ ) 
@@ -886,6 +890,24 @@ matrix matrix::operator-( const matrix &b )
     return tmp;
 
 } // FUNCTION : matrix::operator-
+
+void  matrix::set_boundary(double bc) {
+    for (int idx = 0; idx < cells; idx++)
+    {
+        const int i = idx % dim;
+        const int j = (idx % (dim * dim)) / dim;
+        const int k = idx / (dim * dim);
+
+#if ( N_DIMS == 2 )
+        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1)  this->value[idx] = bc;
+        
+#elif ( N_DIMS == 3 )
+        if (i == 0 || i == dim - 1 || j == 0 || j == dim - 1 || k == 0 || k == dim - 1)  this->value[idx] = bc;
+        
+#endif
+
+    } // for( int idx = 0; idx < cells; idx++ ) 
+} // FUNCTION : matrix::set_boundary
 
 
 

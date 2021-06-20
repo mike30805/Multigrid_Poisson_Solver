@@ -52,6 +52,7 @@ class matrix
         void   set_value( int idx, double val );
         void   add_value( int idx, double val );
         void   input_answer(int idx,double ans);
+        void   set_boundary(double bc);
 
         matrix operator+(const matrix&);
         matrix operator-(const matrix&);
