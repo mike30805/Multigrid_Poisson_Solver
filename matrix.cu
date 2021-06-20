@@ -107,7 +107,7 @@ void SOR_smoothing_GPU(const bool even, const int dim, const double h, double* d
         int idx = i * dim * dim + j * dim + k;
         d_value[idx] += SOR_OMEGA * frac * (d_value[idx + 1] + d_value[idx - 1] +
             d_value[idx + dim] + d_value[idx - dim] + d_value[idx + dim * dim] + d_value[idx - dim * dim] -
-            d_value[idx] * 6 - h * h * h * d_rho[idx]); 
+            d_value[idx] * 6 - h * h * d_rho[idx]); 
     }
 #   endif //#   if(N_DIMS==2)
 } // FUNCTION :  SOR_smoothing_GPU
@@ -181,7 +181,7 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
                             int idx = i * dim * dim + j * dim + k;
                             this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
                                 this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
-                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                                this->value[idx] * 6 - h * h * rho.value[idx]);
                         }
                     }
 
@@ -200,7 +200,7 @@ void matrix::SOR_smoothing(const matrix& rho, int steps)
                             int idx = i * dim * dim + j * dim + k;
                             this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
                                 this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
-                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                                this->value[idx] * 6 - h * h * rho.value[idx]);
                         }
                     }
 
@@ -330,7 +330,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
                             int idx = i * dim * dim + j * dim + k;
                             this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
                                 this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
-                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                                this->value[idx] * 6 - h * h * rho.value[idx]);
 }
                     }
 
@@ -349,7 +349,7 @@ void matrix::SOR_Exact( const matrix &rho, int steps )
                             int idx = i * dim * dim + j * dim + k;
                             this->value[idx] += SOR_OMEGA * fracs * (this->value[idx + 1] + this->value[idx - 1] +
                                 this->value[idx + dim] + this->value[idx - dim] + this->value[idx + dim * dim] + this->value[idx - dim * dim] -
-                                this->value[idx] * 6 - h * h * h * rho.value[idx]);
+                                this->value[idx] * 6 - h * h * rho.value[idx]);
                         }
                     }
 
@@ -719,7 +719,7 @@ double matrix::Residual_error(const matrix& rho)
         sum += (this->value[idx + did_x[0]] + this->value[idx - did_x[0]] +
             this->value[idx + did_x[1]] + this->value[idx - did_x[1]] +
             this->value[idx + did_x[2]] + this->value[idx - did_x[2]] -
-            this->value[idx] * 6 - h * h * h * rho.value[idx]) / h / h / h / 6./ rho.value[idx];
+            this->value[idx] * 6 - h * h * rho.value[idx]) / h / h  / 6./ rho.value[idx];
 #endif
 
     } // for( int idx = 0; idx < cells; idx++ ) 
@@ -747,7 +747,7 @@ matrix matrix::Residual( const matrix & rho )
         res.value[idx] = ( this->value[ idx+did_x[0] ] + this->value[ idx-did_x[0] ] + 
                            this->value[ idx+did_x[1] ] + this->value[ idx-did_x[1] ] + 
                            this->value[ idx+did_x[2] ] + this->value[ idx-did_x[2] ] - 
-                           this->value[ idx ]*6 - h*h*h*rho.value[ idx ] ) / h / h / h / 6.;
+                           this->value[ idx ]*6 - h*h*rho.value[ idx ] ) / h / h  / 6.;
         #endif
         
     } // for( int idx = 0; idx < cells; idx++ ) 
