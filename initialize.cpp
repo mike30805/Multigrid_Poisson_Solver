@@ -3,7 +3,7 @@
 
 #include "initialize.h"
 
-#include "Particle_IC_Constructor.h"
+#include "Particle_IC_Constructor_2D.h"
 
 //--------------------------------------------------------------------------------
 // Function    : Init_matrix
@@ -154,7 +154,7 @@ bool Init_NBody( matrix &mat, particle *pars )
     int rho_col        =1          ;          // number of the column of the density of density profile, when model is "UNKNOWN"  [1]
     double truncation    = 0       ;             // whether to turn on a smoothy truncation function of density near MaxR [0]
 
-    Particle_IC_Constructor constructor_Models;
+    Particle_IC_Constructor_2D constructor_Models;
     constructor_Models.init("Plummer",Alpha,Newton_G,Rho0,R0,MassProfNBin,MaxR,truncation,0.7,r_col,rho_col,"NONE");
 
 

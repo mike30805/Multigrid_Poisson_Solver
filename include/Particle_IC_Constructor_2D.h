@@ -28,7 +28,7 @@ extern int LoadTable( double *&Data, const char *FileName, const int NCol_Target
                    const bool AllocMem );
 
 #define size_Models 1000
-typedef struct Models_Input_Parameter{
+typedef struct Models_Input_Parameter_2D{
    int*    Models_RSeed;
    double* Models_Rho0;
    double* Models_R0;
@@ -46,7 +46,7 @@ typedef struct Models_Input_Parameter{
    int*    Models_r_col;
    int*    Models_rho_col;
    bool* Models_truncation;
-}MP;
+}MP_2D;
 
 
 class Particle_IC_Constructor_2D
@@ -82,7 +82,7 @@ class Particle_IC_Constructor_2D
         
         
         
-        MP params;
+        MP_2D params;
     protected:
         
     private:
