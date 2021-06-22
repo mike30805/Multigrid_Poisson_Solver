@@ -74,63 +74,6 @@ bool Init_SinWave( matrix &mat, particle *pars )
 
 
 //--------------------------------------------------------------------------------
-// Function    : Init_SolarOrbit
-// Description : Problem number 4
-// Note        :
-// Input       : mat : matrix
-// Output      : if the initializaion is done or not.
-//--------------------------------------------------------------------------------
-bool Init_SolarOrbit( matrix &mat, particle *pars )
-{
-    if ( N_PARS != 2 )
-    {
-        printf("Number of particles need to be 2 in this simulation problem.\n");
-        return false;
-    }
-
-    mat.reset();
-    
-    // particles
-    double *pos = new double[N_DIMS];
-    double *vel = new double[N_DIMS];
-    for ( int p = 0; p < N_PARS; p++ )
-    {
-        if (p == 0)
-        {
-            pos[0] = BOX_L/2.0;
-            pos[1] = BOX_L/2.0;
-            vel[0] = 0.0;
-            vel[1] = 0;
-            pars[p].Par_SetMass(1E+3);
-        } else
-        {
-            pos[0] = BOX_L/2.0 + 1;
-            pos[1] = BOX_L/2.0;
-            vel[0] = 0;
-            vel[1] = pow(2*PI,1);//for 2D  /*pow(2 * pi, -0.5) for 3D;*/
-            pars[p].Par_SetMass(1);
-        }
-        #if ( N_DIMS == 3 )
-        pos[2] = BOX_L / 2.0;
-        vel[2] = 0.0;
-        #endif
-        
-       
-        pars[p].Par_SetPos( pos );
-        pars[p].Par_SetVel( vel );
-        pars[p].Par_AddMassToCell( mat );
-
-
-        
-    } // for ( int p = 0; p < N_PARS; p++ )
-
-    delete[] pos;
-    delete[] vel;
-
-    return true;
-} /// FUNCTION : Init_SolarOrbit
-
-//--------------------------------------------------------------------------------
 // Function    : Init_TwoBody
 // Description : Problem number 2
 // Note        :
@@ -263,3 +206,63 @@ bool Init_NBody( matrix &mat, particle *pars )
 
     return true;
 } /// FUNCTION : Init_NBody
+
+
+
+//--------------------------------------------------------------------------------
+// Function    : Init_SolarOrbit
+// Description : Problem number 4
+// Note        :
+// Input       : mat : matrix
+// Output      : if the initializaion is done or not.
+//--------------------------------------------------------------------------------
+bool Init_SolarOrbit(matrix& mat, particle* pars)
+{
+    if (N_PARS != 2)
+    {
+        printf("Number of particles need to be 2 in this simulation problem.\n");
+        return false;
+    }
+
+    mat.reset();
+
+    // particles
+    double* pos = new double[N_DIMS];
+    double* vel = new double[N_DIMS];
+    for (int p = 0; p < N_PARS; p++)
+    {
+        if (p == 0)
+        {
+            pos[0] = BOX_L / 2.0;
+            pos[1] = BOX_L / 2.0;
+            vel[0] = 0.0;
+            vel[1] = 0;
+            pars[p].Par_SetMass(1E+3);
+        }
+        else
+        {
+            pos[0] = BOX_L / 2.0 + 1;
+            pos[1] = BOX_L / 2.0;
+            vel[0] = 0;
+            vel[1] = pow(2 * PI, 1);//for 2D  /*pow(2 * pi, -0.5) for 3D;*/
+            pars[p].Par_SetMass(1);
+        }
+#if ( N_DIMS == 3 )
+        pos[2] = BOX_L / 2.0;
+        vel[2] = 0.0;
+#endif
+
+
+        pars[p].Par_SetPos(pos);
+        pars[p].Par_SetVel(vel);
+        pars[p].Par_AddMassToCell(mat);
+
+
+
+    } // for ( int p = 0; p < N_PARS; p++ )
+
+    delete[] pos;
+    delete[] vel;
+
+    return true;
+} /// FUNCTION : Init_SolarOrbit
