@@ -48,7 +48,7 @@
 
 
 // Time evolve method
-#define EVOLVE                  DKD                             // EULER / KDK / DKD / RK4 /DKDOrbit
+#define EVOLVE                  DKD                             // EULER / KDK / DKD / RK4 
 
 
 // Output
