@@ -38,5 +38,4 @@
 #define KDK             2
 #define DKD             3
 #define RK4             4
-#define DKDOrbit		5
 
